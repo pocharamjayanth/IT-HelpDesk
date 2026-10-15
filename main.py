@@ -1,14 +1,14 @@
 import os
 import jwt
 from typing import Optional, List
-from fastapi import FastAPI, HTTPException, Header, Depends, Query
+from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from supabase import create_client, Client
 
-app = FastAPI(title="HelpDesk AI Enterprise API")
+app = FastAPI(title="HelpDesk AI Enterprise API", version="2.0")
 
-# Setup CORS
+# 1. Configurable CORS for Production & Local Development
 allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
 allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",") if origin.strip()]
 
@@ -20,6 +20,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 2. Persistent Supabase Database Connection
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "super-secret-jwt-key")
@@ -29,7 +30,7 @@ if not SUPABASE_URL or not SUPABASE_ANON_KEY:
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-# Models
+# Data Models
 class TicketCreate(BaseModel):
     title: str
     description: str
@@ -41,13 +42,10 @@ class TicketUpdate(BaseModel):
     assignee_name: Optional[str] = None
     priority: Optional[str] = None
 
-class KBSearchRequest(BaseModel):
-    query: str
-
-# Auth & Permissions
+# 3. Authentication & Permission Dependency
 def get_current_user(authorization: Optional[str] = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
-        # Fallback demo payload if unauthenticated for local UI testing
+        # Fallback payload for unauthenticated demo sessions
         return {"sub": "demo-user", "role": "agent", "email": "agent@enterprise.internal"}
     token = authorization.split(" ")[1]
     try:
@@ -60,13 +58,14 @@ def get_current_user(authorization: Optional[str] = Header(None)):
 def root():
     return {"status": "ok", "service": "HelpDesk AI API", "version": "2.0"}
 
+# 4. Persistent Supabase CRUD Operations
 @app.get("/api/tickets")
 def get_tickets():
     try:
         res = supabase.table("tickets").select("*").order("created_at", desc=True).execute()
         return res.data
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Supabase query error: {str(e)}")
 
 @app.post("/api/tickets", status_code=201)
 def create_ticket(ticket: TicketCreate):
@@ -97,7 +96,7 @@ def update_ticket(ticket_id: str, updates: TicketUpdate, user: dict = Depends(ge
         res = supabase.table("tickets").update(update_data).eq("id", ticket_id).execute()
         return res.data[0] if res.data else {"status": "updated"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update ticket: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update ticket in Supabase: {str(e)}")
 
 @app.post("/api/triage")
 def ai_triage(data: dict):
@@ -128,15 +127,3 @@ def ai_triage(data: dict):
         "confidence_score": 0.94,
         "reasoning": reasoning
     }
-
-# Semantic RAG Engine
-@app.post("/api/kb/search")
-def search_knowledge_base(req: KBSearchRequest):
-    q = req.query.lower()
-    articles = [
-        {"id": "kb-1", "title": "Connect to Corporate Wi-Fi (802.1X)", "category": "network", "content": "Authenticate with your Okta SSO credentials and approve MFA via YubiKey."},
-        {"id": "kb-2", "title": "VPN Tunnel Certificate Reset", "category": "security", "content": "Purge DNS cache by running 'sudo dscacheutil -flushcache' in Terminal on macOS."},
-        {"id": "kb-3", "title": "SSO Account Password Unlock", "category": "access", "content": "Navigate to okta.enterprise.internal and click 'Forgot Password' for self-serve reset."}
-    ]
-    results = [a for a in articles if q in a["title"].lower() or q in a["content"].lower()]
-    return {"query": req.query, "matches": results if results else articles[:1]}
