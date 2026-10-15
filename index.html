@@ -32,7 +32,11 @@
     <div id="app" class="h-full flex flex-col"></div>
 
     <script>
-        const API_URL = 'http://127.0.0.1:8000/api';
+        // Configurable API Endpoint Resolution (Local vs Deployed Production)
+        const API_URL = window.ENV_API_URL || 
+                        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+                         ? 'http://127.0.0.1:8000/api' 
+                         : 'https://your-deployed-backend.render.com/api');
 
         const STATE = {
             currentView: 'dashboard',
@@ -53,7 +57,7 @@
                 STATE.tickets = await res.json();
             } catch (err) {
                 console.error('API Error:', err);
-                STATE.errorMessage = 'Failed to connect to FastAPI server at http://127.0.0.1:8000. Ensure main.py is running.';
+                STATE.errorMessage = 'Failed to connect to FastAPI server at ' + API_URL;
             } finally {
                 STATE.isLoading = false;
                 render();
@@ -225,6 +229,26 @@
                                 <label class="block text-xs font-semibold uppercase text-slate-700 mb-1">Issue Title</label>
                                 <input type="text" id="modalTitle" required placeholder="e.g. Cannot connect to internal VPN" class="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600">
                             </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold uppercase text-slate-700 mb-1">Category</label>
+                                    <select id="modalCategory" class="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm">
+                                        <option value="network">Network</option>
+                                        <option value="hardware">Hardware</option>
+                                        <option value="software">Software</option>
+                                        <option value="account_access">Account Access</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold uppercase text-slate-700 mb-1">Priority</label>
+                                    <select id="modalPriority" class="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm">
+                                        <option value="low">Low</option>
+                                        <option value="medium" selected>Medium</option>
+                                        <option value="high">High</option>
+                                        <option value="critical">Critical</option>
+                                    </select>
+                                </div>
+                            </div>
                             <div>
                                 <label class="block text-xs font-semibold uppercase text-slate-700 mb-1">Description</label>
                                 <textarea id="modalDesc" rows="3" required placeholder="Describe symptoms..." class="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"></textarea>
@@ -258,23 +282,29 @@
                     body: JSON.stringify({ title, description: desc })
                 });
                 const data = await res.json();
+                if (data.suggested_category) document.getElementById('modalCategory').value = data.suggested_category;
+                if (data.suggested_priority) document.getElementById('modalPriority').value = data.suggested_priority;
                 alert(`⚡ AI Triage Recommendation:\n\nCategory: ${data.suggested_category.toUpperCase()}\nPriority: ${data.suggested_priority.toUpperCase()}\nConfidence: ${(data.confidence_score * 100).toFixed(0)}%\n\nReasoning: ${data.reasoning}`);
             } catch (err) {
-                alert('Could not reach AI Triage endpoint on port 8000.');
+                alert('Could not reach AI Triage endpoint on ' + API_URL);
             }
         }
 
+        // Dynamic Ticket Creation Handler (Reads modalCategory & modalPriority dynamically)
         async function handleCreateTicket(e) {
             e.preventDefault();
             const btn = document.getElementById('submitBtn');
             btn.disabled = true;
             btn.innerText = 'Saving...';
 
+            const category = document.getElementById('modalCategory').value;
+            const priority = document.getElementById('modalPriority').value;
+
             const payload = {
                 title: document.getElementById('modalTitle').value,
                 description: document.getElementById('modalDesc').value,
-                category: 'network',
-                priority: 'medium'
+                category: category,
+                priority: priority
             };
 
             try {
