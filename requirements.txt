@@ -1,0 +1,7 @@
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+pydantic==2.6.1
+supabase==2.3.4
+pyjwt==2.8.0
+gunicorn==21.2.0
+python-dotenv==1.0.1
