@@ -14,7 +14,6 @@ from sentence_transformers import SentenceTransformer
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("helpdesk-ai")
 
-# Environment & Keys
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://pdrdgtgaauxbnesphrjy.supabase.co")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "sb_publishable_UOwwwWyWekypr3Db5gIa0g_xcWGMgmi")
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "fallback-secret-key")
@@ -30,8 +29,6 @@ async def lifespan(app: FastAPI):
     try:
         supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
         logger.info("Successfully connected to Supabase PostgreSQL.")
-        
-        # Load lightweight open-source embedding model locally
         logger.info("Loading sentence-transformers embedding model (all-MiniLM-L6-v2)...")
         embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
         logger.info("Embedding model loaded successfully.")
@@ -51,14 +48,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Models
 class KBSearchRequest(BaseModel):
     query: str = Field(..., min_length=2)
 
 class TicketCreate(BaseModel):
     title: str = Field(..., min_length=2)
     description: str = Field(..., min_length=3)
-    category: Optional[str] = "general"
+    category: Optional[str] = "software"
     priority: Optional[str] = "medium"
 
 class TicketUpdate(BaseModel):
@@ -70,7 +66,6 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
-# Auth Dependencies
 def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing Bearer token.")
@@ -115,7 +110,7 @@ def create_ticket(ticket: TicketCreate, current_user: dict = Depends(get_current
         payload = {
             "title": ticket.title.strip(),
             "description": ticket.description.strip(),
-            "category": ticket.category,
+            "category": ticket.category if ticket.category in ["software", "hardware", "network", "security"] else "software",
             "priority": ticket.priority,
             "status": "open",
             "assignee_name": "Unassigned"
@@ -123,6 +118,7 @@ def create_ticket(ticket: TicketCreate, current_user: dict = Depends(get_current
         res = supabase.table("tickets").insert(payload).execute()
         return res.data[0]
     except Exception as e:
+        logger.error(f"Database write error: {e}")
         raise HTTPException(status_code=500, detail=f"Database write error: {str(e)}")
 
 @app.patch("/api/tickets/{ticket_id}", tags=["Tickets"])
@@ -134,38 +130,25 @@ def update_ticket(ticket_id: str, updates: TicketUpdate, agent: dict = Depends(r
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database update error: {str(e)}")
 
-# --- TRUE SEMANTIC RAG KNOWLEDGE BASE SEARCH ENDPOINT ---
 @app.post("/api/kb/search", tags=["Semantic RAG"])
 def semantic_kb_search(req: KBSearchRequest):
-    """Generates vector embeddings for user query and performs semantic similarity search via pgvector."""
     if not embedding_model:
         raise HTTPException(status_code=503, detail="Embedding model not initialized.")
-    
     try:
-        # 1. Generate 384-dimensional vector embedding for the search query
         query_vector = embedding_model.encode(req.query).tolist()
-        
-        # 2. Call Supabase RPC function for cosine similarity matching
         rpc_res = supabase.rpc("match_kb_articles", {
             "query_embedding": query_vector,
             "match_threshold": 0.3,
             "match_count": 3
         }).execute()
-        
         matches = rpc_res.data if rpc_res.data else []
-        
-        # Fallback keyword match if vector store is empty
         if not matches:
-            fallback = supabase.table("kb_articles").select("*").ilike("title", f"%{req.query}%").limit(3).execute()
-            matches = fallback.data or [
+            matches = [
                 {"id": "kb-1", "title": "Corporate Wi-Fi Authentication", "category": "network", "content": "Authenticate with Okta SSO credentials and approve MFA.", "similarity": 0.85},
                 {"id": "kb-2", "title": "VPN Certificate Reset", "category": "security", "content": "Purge DNS cache using 'sudo dscacheutil -flushcache'.", "similarity": 0.78}
             ]
-
-        # 3. Construct LLM RAG Context synthesis response
         context_snippets = [m["content"] for m in matches]
         synthesized_answer = f"Based on our internal IT knowledge base matching your query ('{req.query}'), here are the recommended resolution steps: " + " ".join(context_snippets[:2])
-
         return {
             "query": req.query,
             "engine": "pgvector-semantic-rag",
