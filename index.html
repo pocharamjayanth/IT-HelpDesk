@@ -1,215 +1,300 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full bg-slate-50">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HelpDesk</title>
+    <title>HelpDesk AI — Enterprise IT Service Command Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
-                    colors: { brand: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' } }
+                    colors: {
+                        brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' },
+                        navy: { 800: '#1e293b', 900: '#0f172a', 950: '#020617' }
+                    }
                 }
             }
         }
     </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    </style>
 </head>
-<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans antialiased min-h-screen flex">
+<body class="h-full text-slate-900 font-sans antialiased overflow-hidden">
 
-    <!-- Sidebar Navigation -->
-    <aside class="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 hidden md:flex flex-col justify-between">
-        <div>
-            <div class="h-16 flex items-center px-6 border-b border-slate-200 dark:border-slate-700">
-                <i class="fa-solid fa-headset text-brand-500 text-2xl mr-3"></i>
-                <span class="font-bold text-lg tracking-tight">HelpDesk</span>
-            </div>
-            <nav class="p-4 space-y-1">
-                <a href="#" class="flex items-center px-4 py-3 rounded-xl bg-brand-50 dark:bg-brand-900/40 text-brand-600 dark:text-brand-400 font-medium">
-                    <i class="fa-solid fa-chart-pie w-6"></i> Dashboard
-                </a>
-            </nav>
-        </div>
-        <div class="p-4 border-t border-slate-200 dark:border-slate-700">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-full bg-brand-500 text-white flex items-center justify-center font-bold">PJ</div>
-                <div>
-                    <p class="text-sm font-medium">Pocharam Jayanth</p>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Administrator</p>
-                </div>
-            </div>
-        </div>
-    </aside>
-
-    <!-- Main Content Area -->
-    <div class="flex-1 flex flex-col min-w-0">
-        <header class="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 flex items-center justify-between">
-            <div class="flex items-center space-x-4 w-1/3">
-                <div class="relative w-full max-w-md">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                        <i class="fa-solid fa-search"></i>
-                    </span>
-                    <input type="text" id="searchInput" placeholder="Search tickets..." class="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-700/50 border border-transparent dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-brand-500 transition">
-                </div>
-            </div>
-            <div class="flex items-center space-x-4">
-                <button onclick="openModal()" class="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 shadow-sm transition">
-                    <i class="fa-solid fa-plus"></i>
-                    <span>New Ticket</span>
-                </button>
-            </div>
-        </header>
-
-        <main class="flex-1 p-6 overflow-y-auto space-y-6">
-            <!-- Dynamic Stats Grid -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                    <p class="text-sm text-slate-500 dark:text-slate-400 font-medium">Total Tickets</p>
-                    <h3 id="statTotal" class="text-2xl font-bold mt-1">0</h3>
-                </div>
-                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                    <p class="text-sm text-slate-500 dark:text-slate-400 font-medium">Open Tickets</p>
-                    <h3 id="statOpen" class="text-2xl font-bold mt-1">0</h3>
-                </div>
-                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                    <p class="text-sm text-slate-500 dark:text-slate-400 font-medium">Resolved</p>
-                    <h3 id="statResolved" class="text-2xl font-bold mt-1">0</h3>
-                </div>
-                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                    <p class="text-sm text-slate-500 dark:text-slate-400 font-medium">Active High/Critical</p>
-                    <h3 id="statHigh" class="text-2xl font-bold mt-1">0</h3>
-                </div>
-            </div>
-
-            <!-- Live Table -->
-            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                    <h3 class="font-bold text-base">Live Support Tickets</h3>
-                    <button onclick="loadTickets()" class="text-sm text-brand-500 hover:underline font-medium flex items-center space-x-1">
-                        <i class="fa-solid fa-rotate-right"></i> <span>Refresh</span>
-                    </button>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-slate-50 dark:bg-slate-700/50 text-slate-400 text-xs uppercase tracking-wider font-semibold">
-                                <th class="px-6 py-3">Ticket ID</th>
-                                <th class="px-6 py-3">Title</th>
-                                <th class="px-6 py-3">Category</th>
-                                <th class="px-6 py-3">Status</th>
-                                <th class="px-6 py-3">Priority</th>
-                                <th class="px-6 py-3">Requester</th>
-                            </tr>
-                        </thead>
-                        <tbody id="ticketTableBody" class="divide-y divide-slate-200 dark:divide-slate-700 text-sm">
-                            <tr><td colspan="6" class="px-6 py-4 text-center text-slate-400">Loading tickets from FastAPI server...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Modal -->
-    <div id="ticketModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-lg border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                <h3 class="font-bold text-lg">Create New Ticket</h3>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
-            </div>
-            <form id="ticketForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">Issue Title</label>
-                    <input type="text" id="ticketTitle" required placeholder="e.g. Cannot connect to internal runner" class="w-full px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Description</label>
-                    <textarea id="ticketDesc" rows="3" required placeholder="Detailed information..." class="w-full px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm"></textarea>
-                </div>
-                <div class="flex justify-between items-center pt-2">
-                    <button type="button" onclick="triggerAITriage()" class="px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition">
-                        ⚡ Run AI Triage
-                    </button>
-                    <div class="space-x-2">
-                        <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-lg text-sm bg-slate-100 dark:bg-slate-700">Cancel</button>
-                        <button type="submit" class="px-4 py-2 rounded-lg text-sm bg-brand-500 text-white font-medium">Submit Ticket</button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
+    <div id="app" class="h-full flex flex-col"></div>
 
     <script>
         const API_URL = 'http://127.0.0.1:8000/api';
 
-        async function loadTickets() {
+        const STATE = {
+            currentView: 'dashboard',
+            currentRole: 'employee',
+            currentUser: { name: 'Pocharam Jayanth', email: 'jayanth@enterprise.internal', avatar: 'PJ' },
+            tickets: [],
+            isLoading: false,
+            errorMessage: null
+        };
+
+        async function fetchTickets() {
+            STATE.isLoading = true;
+            STATE.errorMessage = null;
+            render();
             try {
                 const res = await fetch(`${API_URL}/tickets`);
-                const tickets = await res.json();
-                renderTable(tickets);
-                updateStats(tickets);
+                if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+                STATE.tickets = await res.json();
             } catch (err) {
-                console.error('API Fetch Error:', err);
+                console.error('API Error:', err);
+                STATE.errorMessage = 'Failed to connect to FastAPI server at http://127.0.0.1:8000. Ensure main.py is running.';
+            } finally {
+                STATE.isLoading = false;
+                render();
             }
         }
 
-        function renderTable(tickets) {
-            const tbody = document.getElementById('ticketTableBody');
-            tbody.innerHTML = tickets.map(t => `
-                <tr>
-                    <td class="px-6 py-4 font-medium">${t.ticket_number || '#TCK-LOCAL'}</td>
-                    <td class="px-6 py-4 font-medium">${t.title}</td>
-                    <td class="px-6 py-4"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 dark:bg-slate-700">${t.category}</span></td>
-                    <td class="px-6 py-4"><span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">${t.status}</span></td>
-                    <td class="px-6 py-4"><span class="text-red-500 font-medium"><i class="fa-solid fa-circle text-xs mr-1"></i>${t.priority}</span></td>
-                    <td class="px-6 py-4 text-slate-500">${t.requester_name || 'Jayanth'}</td>
-                </tr>
-            `).join('');
+        function render() {
+            const app = document.getElementById('app');
+            if (STATE.currentView === 'login') {
+                app.innerHTML = renderLogin();
+            } else {
+                app.innerHTML = `
+                    <div class="h-full bg-slate-50 flex text-slate-900 overflow-hidden">
+                        ${renderSidebar()}
+                        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+                            ${renderTopbar()}
+                            <main class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                                ${STATE.errorMessage ? `
+                                    <div class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center justify-between">
+                                        <span><i class="fa-solid fa-triangle-exclamation mr-2"></i>${STATE.errorMessage}</span>
+                                        <button onclick="fetchTickets()" class="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-semibold">Retry</button>
+                                    </div>
+                                ` : ''}
+                                ${renderMainContent()}
+                            </main>
+                        </div>
+                    </div>
+                    ${renderCreateTicketModal()}
+                `;
+            }
         }
 
-        function updateStats(tickets) {
-            document.getElementById('statTotal').innerText = tickets.length;
-            document.getElementById('statOpen').innerText = tickets.filter(t => t.status === 'open').length;
-            document.getElementById('statResolved').innerText = tickets.filter(t => t.status === 'resolved').length;
-            document.getElementById('statHigh').innerText = tickets.filter(t => t.priority === 'high' || t.priority === 'critical').length;
+        function renderSidebar() {
+            return `
+                <aside class="w-64 bg-navy-900 text-slate-300 flex-shrink-0 flex flex-col justify-between border-r border-slate-800">
+                    <div>
+                        <div class="p-6 border-b border-slate-800/80 flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-blue-500/30">H</div>
+                            <div>
+                                <span class="font-bold text-white text-base tracking-tight">HelpDesk <span class="text-blue-500">AI</span></span>
+                                <span class="block text-[11px] text-slate-400">Enterprise IT Hub</span>
+                            </div>
+                        </div>
+                        <nav class="p-4 space-y-1 text-sm font-medium">
+                            <a href="javascript:void(0)" onclick="navigate('dashboard')" class="flex items-center gap-3 px-3 py-2.5 rounded-lg ${STATE.currentView === 'dashboard' ? 'text-white bg-blue-600 font-semibold' : 'hover:bg-slate-800 hover:text-white'}"><i class="fa-solid fa-chart-pie w-5"></i> Overview</a>
+                            <a href="javascript:void(0)" onclick="navigate('queue')" class="flex items-center gap-3 px-3 py-2.5 rounded-lg ${STATE.currentView === 'queue' ? 'text-white bg-blue-600 font-semibold' : 'hover:bg-slate-800 hover:text-white'}"><i class="fa-solid fa-list-check w-5"></i> IT Ticket Queue</a>
+                            <a href="javascript:void(0)" onclick="openModal()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 hover:text-white"><i class="fa-solid fa-circle-plus w-5"></i> Create Ticket</a>
+                        </nav>
+                    </div>
+                    <div class="p-4 border-t border-slate-800 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs">${STATE.currentUser.avatar}</div>
+                            <div>
+                                <span class="block text-xs font-semibold text-white">${STATE.currentUser.name}</span>
+                                <span class="block text-[11px] text-slate-400 capitalize">${STATE.currentRole}</span>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            `;
         }
 
-        async function triggerAITriage() {
-            const title = document.getElementById('ticketTitle').value;
-            const description = document.getElementById('ticketDesc').value;
-            if(!title && !description) return alert('Provide title/description first');
-
-            const res = await fetch(`${API_URL}/triage`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, description })
-            });
-            const data = await res.json();
-            alert(`AI Suggestion:\nCategory: ${data.suggested_category}\nPriority: ${data.suggested_priority}\nConfidence: ${data.confidence_score * 100}%`);
+        function renderTopbar() {
+            return `
+                <header class="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-between sticky top-0 z-20">
+                    <div class="relative w-96">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+                        <input type="text" placeholder="Search tickets or keywords..." class="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <button onclick="openModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-medium flex items-center gap-2 shadow-sm transition">
+                            <i class="fa-solid fa-plus"></i> New Ticket
+                        </button>
+                    </div>
+                </header>
+            `;
         }
 
-        async function handleFormSubmit(e) {
-            e.preventDefault();
-            const title = document.getElementById('ticketTitle').value;
-            const description = document.getElementById('ticketDesc').value;
-
-            await fetch(`${API_URL}/tickets`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, description })
-            });
-
-            closeModal();
-            document.getElementById('ticketForm').reset();
-            loadTickets();
+        function renderMainContent() {
+            if (STATE.isLoading) {
+                return `<div class="p-12 text-center text-slate-500 font-medium"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><p>Loading database tickets...</p></div>`;
+            }
+            return STATE.currentView === 'queue' ? renderQueue() : renderDashboard();
         }
 
+        function renderDashboard() {
+            const total = STATE.tickets.length;
+            const open = STATE.tickets.filter(t => t.status === 'open').length;
+            const inProgress = STATE.tickets.filter(t => t.status === 'in_progress').length;
+            const resolved = STATE.tickets.filter(t => t.status === 'resolved').length;
+
+            return `
+                <div class="space-y-6">
+                    <div>
+                        <h1 class="text-2xl font-bold text-slate-900">Good morning, ${STATE.currentUser.name}</h1>
+                        <p class="text-sm text-slate-500">Connected to Supabase PostgreSQL via FastAPI microservice.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <p class="text-xs text-slate-500 font-semibold uppercase">Total Tickets</p>
+                            <h3 class="text-2xl font-bold mt-1">${total}</h3>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <p class="text-xs text-slate-500 font-semibold uppercase">Open</p>
+                            <h3 class="text-2xl font-bold mt-1">${open}</h3>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <p class="text-xs text-slate-500 font-semibold uppercase">In Progress</p>
+                            <h3 class="text-2xl font-bold mt-1">${inProgress}</h3>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <p class="text-xs text-slate-500 font-semibold uppercase">Resolved</p>
+                            <h3 class="text-2xl font-bold mt-1">${resolved}</h3>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                            <h3 class="font-bold text-base">Database Tickets</h3>
+                            <button onclick="fetchTickets()" class="text-xs text-blue-600 hover:underline font-semibold"><i class="fa-solid fa-rotate mr-1"></i>Refresh</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 text-slate-400 text-xs uppercase font-semibold">
+                                        <th class="px-6 py-3">Ticket ID</th>
+                                        <th class="px-6 py-3">Title</th>
+                                        <th class="px-6 py-3">Category</th>
+                                        <th class="px-6 py-3">Priority</th>
+                                        <th class="px-6 py-3">Status</th>
+                                        <th class="px-6 py-3">Assignee</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200 text-sm">
+                                    ${STATE.tickets.length === 0 ? '<tr><td colspan="6" class="px-6 py-6 text-center text-slate-400">No tickets found in Supabase database.</td></tr>' : 
+                                        STATE.tickets.map(t => `
+                                        <tr class="hover:bg-slate-50 transition">
+                                            <td class="px-6 py-4 font-semibold text-blue-600">${t.ticket_number || t.id}</td>
+                                            <td class="px-6 py-4 font-medium">${t.title}</td>
+                                            <td class="px-6 py-4"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100">${t.category}</span></td>
+                                            <td class="px-6 py-4"><span class="${t.priority === 'critical' ? 'text-red-600' : 'text-amber-600'} font-semibold uppercase text-xs">${t.priority}</span></td>
+                                            <td class="px-6 py-4"><span class="px-2.5 py-1 rounded-full text-xs font-semibold ${t.status === 'resolved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">${t.status}</span></td>
+                                            <td class="px-6 py-4 text-slate-600">${t.assignee_name || 'Unassigned'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderQueue() {
+            return renderDashboard();
+        }
+
+        function renderCreateTicketModal() {
+            return `
+                <div id="ticketModal" class="fixed inset-0 bg-navy-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+                    <div class="bg-white rounded-2xl w-full max-w-lg border border-slate-200 shadow-xl overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                            <h3 class="font-bold text-lg text-slate-900">Create New Ticket</h3>
+                            <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+                        </div>
+                        <form onsubmit="handleCreateTicket(event)" class="p-6 space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold uppercase text-slate-700 mb-1">Issue Title</label>
+                                <input type="text" id="modalTitle" required placeholder="e.g. Cannot connect to internal VPN" class="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase text-slate-700 mb-1">Description</label>
+                                <textarea id="modalDesc" rows="3" required placeholder="Describe symptoms..." class="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"></textarea>
+                            </div>
+                            <div class="flex justify-between items-center pt-2">
+                                <button type="button" onclick="runAITriage()" class="px-3 py-2 rounded-lg text-xs font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center gap-1.5"><i class="fa-solid fa-wand-magic-sparkles"></i> ⚡ Run AI Triage</button>
+                                <div class="flex space-x-2">
+                                    <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-lg text-sm bg-slate-100 text-slate-700">Cancel</button>
+                                    <button type="submit" id="submitBtn" class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-700 text-white font-medium">Submit Ticket</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        function navigate(view) { STATE.currentView = view; render(); }
         function openModal() { document.getElementById('ticketModal').classList.replace('hidden', 'flex'); }
         function closeModal() { document.getElementById('ticketModal').classList.replace('flex', 'hidden'); }
 
-        window.onload = loadTickets;
+        async function runAITriage() {
+            const title = document.getElementById('modalTitle').value;
+            const desc = document.getElementById('modalDesc').value;
+            if (!title && !desc) return alert('Enter title and description first.');
+
+            try {
+                const res = await fetch(`${API_URL}/triage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, description: desc })
+                });
+                const data = await res.json();
+                alert(`⚡ AI Triage Recommendation:\n\nCategory: ${data.suggested_category.toUpperCase()}\nPriority: ${data.suggested_priority.toUpperCase()}\nConfidence: ${(data.confidence_score * 100).toFixed(0)}%\n\nReasoning: ${data.reasoning}`);
+            } catch (err) {
+                alert('Could not reach AI Triage endpoint on port 8000.');
+            }
+        }
+
+        async function handleCreateTicket(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerText = 'Saving...';
+
+            const payload = {
+                title: document.getElementById('modalTitle').value,
+                description: document.getElementById('modalDesc').value,
+                category: 'network',
+                priority: 'medium'
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/tickets`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error('Failed to create ticket');
+                closeModal();
+                fetchTickets();
+            } catch (err) {
+                alert('Failed to insert ticket into database.');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Submit Ticket';
+            }
+        }
+
+        window.onload = fetchTickets;
     </script>
 </body>
 </html>
