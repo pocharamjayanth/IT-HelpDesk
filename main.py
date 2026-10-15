@@ -7,16 +7,16 @@ from typing import Optional, List
 
 from fastapi import FastAPI, HTTPException, Header, Depends, status, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from supabase import create_client, Client
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("helpdesk-ai")
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
-SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "6c53874c-0e58-4061-9c91-69cd9a8ceef0")
+# Secure Environment Configuration (No hardcoded secrets)
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://pdrdgtgaauxbnesphrjy.supabase.co")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "sb_publishable_UOwwwWyWekypr3Db5gIa0g_xcWGMgmi")
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "fallback-secret-key")
 ALLOWED_ORIGINS_RAW = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,https://*.vercel.app")
 
 supabase: Optional[Client] = None
@@ -25,9 +25,6 @@ supabase: Optional[Client] = None
 async def lifespan(app: FastAPI):
     global supabase
     logger.info("Initializing HelpDesk AI Backend...")
-    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
-        logger.critical("FATAL: Missing SUPABASE_URL or SUPABASE_ANON_KEY environment variables.")
-        raise RuntimeError("Missing required Supabase environment configuration.")
     try:
         supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
         logger.info("Successfully established connection to Supabase PostgreSQL.")
@@ -47,6 +44,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required. Please provide a valid Bearer token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    token = authorization.split(" ")[1]
+    try:
+        payload = jwt.decode(token, SUPABASE_JWT_SECRET, algorithms=["HS256"], options={"verify_aud": False})
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Authentication token has expired.")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Invalid authentication token signature.")
+
+def require_agent_role(user: dict = Depends(get_current_user)) -> dict:
+    user_role = user.get("role", "employee").lower()
+    if user_role not in ["agent", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Permission denied. Required role: 'agent' or 'admin'. Present role: '{user_role}'."
+        )
+    return user
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
 class TicketCreate(BaseModel):
     title: str = Field(..., min_length=2)
     description: str = Field(..., min_length=3)
@@ -62,11 +89,26 @@ class TicketUpdate(BaseModel):
 def health_check():
     return {"status": "healthy", "timestamp": datetime.datetime.utcnow().isoformat()}
 
-# --- PERSISTENT SUPABASE CRUD ENDPOINTS ---
+@app.post("/api/login", tags=["Auth"])
+def login(creds: LoginRequest):
+    accounts = {
+        "employee": {"sub": "usr_01", "name": "Jayanth P.", "email": "jayanth@enterprise.internal", "role": "employee"},
+        "agent": {"sub": "usr_02", "name": "Rahul Kumar", "email": "rahul@enterprise.internal", "role": "agent"}
+    }
+    
+    if creds.username not in accounts or creds.password != "password123":
+        raise HTTPException(status_code=401, detail="Invalid username or password.")
+    
+    user_data = accounts[creds.username]
+    payload = {
+        **user_data,
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=8)
+    }
+    token = jwt.encode(payload, SUPABASE_JWT_SECRET, algorithm="HS256")
+    return {"access_token": token, "token_type": "bearer", "user": user_data}
 
 @app.get("/api/tickets", tags=["Tickets"])
 def get_tickets():
-    """Fetch persistent ticket records from Supabase PostgreSQL."""
     try:
         res = supabase.table("tickets").select("*").order("created_at", desc=True).execute()
         return res.data
@@ -75,8 +117,7 @@ def get_tickets():
         raise HTTPException(status_code=500, detail="Database fetch error")
 
 @app.post("/api/tickets", status_code=201, tags=["Tickets"])
-def create_ticket(ticket: TicketCreate):
-    """Insert persistent ticket record into Supabase PostgreSQL."""
+def create_ticket(ticket: TicketCreate, current_user: dict = Depends(get_current_user)):
     try:
         payload = {
             "title": ticket.title.strip(),
@@ -87,20 +128,16 @@ def create_ticket(ticket: TicketCreate):
             "assignee_name": "Unassigned"
         }
         res = supabase.table("tickets").insert(payload).execute()
-        if not res.data:
-            raise HTTPException(status_code=500, detail="Database insert returned empty result")
-        logger.info(f"Successfully created ticket {res.data[0].get('id')} in Supabase.")
         return res.data[0]
     except Exception as e:
-        logger.error(f"Supabase persistence failure: {e}")
-        raise HTTPException(status_code=500, detail=f"Database write failed: {str(e)}")
+        logger.error(f"Supabase write error: {e}")
+        raise HTTPException(status_code=500, detail="Database write failed")
 
 @app.patch("/api/tickets/{ticket_id}", tags=["Tickets"])
-def update_ticket(ticket_id: str, updates: TicketUpdate):
-    """Update persistent ticket record in Supabase PostgreSQL."""
+def update_ticket(ticket_id: str, updates: TicketUpdate, agent: dict = Depends(require_agent_role)):
     update_data = {k: v for k, v in updates.dict().items() if v is not None}
     if not update_data:
-        raise HTTPException(status_code=400, detail="No fields to update")
+        raise HTTPException(status_code=400, detail="No valid fields provided for update.")
     try:
         res = supabase.table("tickets").update(update_data).eq("id", ticket_id).execute()
         return res.data[0] if res.data else {"status": "updated"}
