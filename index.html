@@ -1,0 +1,1470 @@
+﻿<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HelpDesk AI - Enterprise IT Service Management</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <!-- Chart.js for Admin Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb', // Primary Blue
+              700: '#1d4ed8',
+              900: '#1e3a8a'
+            },
+            navy: {
+              800: '#1e293b',
+              900: '#0f172a', // Dark Navy Sidebar
+              950: '#020617'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="h-full text-slate-800 font-sans flex overflow-hidden antialiased bg-[#f8fafc]">
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed top-5 right-5 z-50 transform -translate-y-20 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-3 bg-navy-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 text-sm">
+    <div id="toast-icon" class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div>
+    <span id="toast-text" class="font-medium">Action successful</span>
+  </div>
+
+  <!-- Left Sidebar (Navy Theme) -->
+  <aside id="main-sidebar" class="w-64 bg-navy-900 border-r border-slate-800 flex flex-col shrink-0 z-30 transition-all duration-300">
+    <!-- Brand Header -->
+    <div class="h-16 flex items-center justify-between px-5 border-b border-slate-800">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-brand-600/30 font-bold text-lg">
+          ⚡
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <span class="font-bold text-base text-white tracking-tight">HelpDesk</span>
+            <span class="bg-brand-500/20 text-brand-400 border border-brand-500/30 text-[10px] font-bold px-1.5 py-0.5 rounded">AI</span>
+          </div>
+          <span class="text-[10px] text-slate-400 block -mt-0.5">Enterprise ITSM</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Demo Role Selector Switcher -->
+    <div class="p-3 mx-3 my-3 bg-slate-800/60 rounded-xl border border-slate-700/60">
+      <div class="flex items-center justify-between mb-1.5">
+        <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Demo Persona</span>
+        <span id="current-role-badge" class="text-[10px] font-semibold text-brand-300 bg-brand-600/30 px-1.5 py-0.2 rounded">Employee</span>
+      </div>
+      <select id="role-selector" class="w-full bg-navy-900 text-xs text-slate-200 border border-slate-700 rounded-lg p-1.5 outline-none focus:border-brand-500 cursor-pointer">
+        <option value="employee">Employee (Jayanth P.)</option>
+        <option value="agent">IT Support Agent (L2 Tech)</option>
+        <option value="admin">IT Director (Administrator)</option>
+      </select>
+    </div>
+
+    <!-- Navigation Links -->
+    <nav class="flex-1 px-3 py-2 space-y-1 overflow-y-auto text-xs font-medium">
+      <div class="text-[10px] uppercase font-bold text-slate-500 px-3 py-1 tracking-wider">Main Desk</div>
+      
+      <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-white bg-brand-600 shadow-sm transition" data-view="dashboard">
+        <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+        <span>Overview Dashboard</span>
+      </button>
+
+      <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition" data-view="tickets">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 2v4"/><path d="M21 10.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14"/><circle cx="8" cy="14" r="2"/><path d="M10 2v2"/><path d="M7 13h10"/></svg>
+        <span id="nav-tickets-label">My Tickets</span>
+        <span id="ticket-badge-count" class="ml-auto bg-brand-500/20 text-brand-300 text-[10px] font-bold px-1.5 py-0.5 rounded-full">5</span>
+      </button>
+
+      <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition" data-view="new-ticket">
+        <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <span>Raise New Ticket</span>
+      </button>
+
+      <div class="text-[10px] uppercase font-bold text-slate-500 px-3 pt-3 pb-1 tracking-wider">Support Operations</div>
+
+      <button id="nav-agent-queue" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition" data-view="agent-queue">
+        <svg class="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>IT Agent Queue</span>
+        <span class="ml-auto bg-amber-500/20 text-amber-300 text-[10px] font-bold px-1.5 py-0.5 rounded-full">12</span>
+      </button>
+
+      <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition" data-view="knowledge">
+        <svg class="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg>
+        <span>Knowledge Base (RAG)</span>
+      </button>
+
+      <div id="admin-nav-group">
+        <div class="text-[10px] uppercase font-bold text-slate-500 px-3 pt-3 pb-1 tracking-wider">Administration</div>
+
+        <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition" data-view="analytics">
+          <svg class="w-4 h-4 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span>SLA & Workload Analytics</span>
+        </button>
+
+        <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition" data-view="users">
+          <svg class="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>Staff & SLA Policies</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- User Profile Bar -->
+    <div class="p-3 border-t border-slate-800 bg-[#0c1322]">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-brand-500 to-indigo-500 text-white flex items-center justify-center font-bold text-xs ring-2 ring-brand-500/30">
+          PJ
+        </div>
+        <div class="overflow-hidden">
+          <span id="profile-name" class="text-xs font-semibold text-white truncate block">Pocharam Jayanth</span>
+          <span id="profile-dept" class="text-[10px] text-slate-400 block truncate">AI & ML Engineer • GITAM</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Right Content Area -->
+  <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+    
+    <!-- Top Bar -->
+    <header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 shadow-xs z-20">
+      <div class="flex items-center gap-4">
+        <button id="toggle-sidebar-btn" class="p-1.5 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 transition" title="Toggle Sidebar">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div>
+          <h1 id="view-title" class="text-lg font-bold text-slate-900 tracking-tight leading-none">Employee Portal Overview</h1>
+          <span id="view-breadcrumb" class="text-[11px] text-slate-500 mt-1 block">HelpDesk AI • Internal Service Desk • Hyderabad HQ</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Global Search Bar -->
+        <div class="relative hidden sm:block w-72">
+          <input id="global-search" type="text" placeholder="Search ticket #, keyword, knowledge..." class="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl pl-9 pr-3 py-2 outline-none focus:border-brand-500 focus:bg-white transition text-slate-800">
+          <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+
+        <!-- Quick Create Ticket Button -->
+        <button id="header-create-ticket-btn" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-sm transition active:scale-95">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span class="hidden md:inline">Raise Ticket</span>
+        </button>
+
+        <div class="h-6 w-px bg-slate-200"></div>
+
+        <!-- System Status -->
+        <div class="flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-lg text-xs font-medium">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="hidden sm:inline">All Systems Operational</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main View Dynamic Container -->
+    <main class="flex-1 overflow-y-auto p-6 bg-slate-50/70">
+      
+      <!-- ================= VIEW 1: EMPLOYEE DASHBOARD ================= -->
+      <section id="view-dashboard" class="space-y-6">
+        <!-- Greeting Banner -->
+        <div class="bg-gradient-to-r from-brand-600 via-brand-700 to-navy-900 rounded-2xl p-6 text-white shadow-md relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="relative z-10 max-w-xl">
+            <span class="px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[11px] font-semibold tracking-wide uppercase">AI-Assisted Service Desk</span>
+            <h2 class="text-2xl font-bold mt-2">Good morning, Jayanth!</h2>
+            <p class="text-brand-100 text-xs mt-1 leading-relaxed">Need technical assistance with Wi-Fi, VPN credentials, software licenses, or hardware? Submit a ticket and our AI copilot will route it to the right engineer.</p>
+          </div>
+          <div class="flex items-center gap-3 relative z-10">
+            <button id="banner-create-btn" class="px-4 py-2.5 rounded-xl bg-white text-brand-700 hover:bg-brand-50 font-bold text-xs shadow-md transition active:scale-95 flex items-center gap-2">
+              <span>+ Raise Service Request</span>
+            </button>
+            <button id="banner-kb-btn" class="px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-xs border border-white/20 transition">
+              Browse Guides
+            </button>
+          </div>
+        </div>
+
+        <!-- KPI Summary Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+            <div>
+              <span class="text-xs text-slate-500 font-medium block">Total Tickets</span>
+              <span id="kpi-total" class="text-2xl font-bold text-slate-900 mt-1 block">5</span>
+              <span class="text-[11px] text-slate-400 mt-0.5 block">Lifetime filed</span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center font-bold text-lg">
+              📑
+            </div>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+            <div>
+              <span class="text-xs text-amber-600 font-medium block">Open / Queued</span>
+              <span id="kpi-open" class="text-2xl font-bold text-amber-600 mt-1 block">2</span>
+              <span class="text-[11px] text-amber-500 mt-0.5 block">Awaiting pickup</span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-lg">
+              ⏳
+            </div>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+            <div>
+              <span class="text-xs text-indigo-600 font-medium block">In Progress</span>
+              <span id="kpi-progress" class="text-2xl font-bold text-indigo-600 mt-1 block">1</span>
+              <span class="text-[11px] text-indigo-500 mt-0.5 block">Agent investigating</span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-lg">
+              ⚙️
+            </div>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+            <div>
+              <span class="text-xs text-emerald-600 font-medium block">Resolved</span>
+              <span id="kpi-resolved" class="text-2xl font-bold text-emerald-600 mt-1 block">2</span>
+              <span class="text-[11px] text-emerald-500 mt-0.5 block">100% SLA met</span>
+            </div>
+            <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-lg">
+              ✅
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Tickets Table Card -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 class="font-bold text-slate-900 text-sm">Your Recent IT Tickets</h3>
+              <p class="text-slate-500 text-xs">Live tracking and status updates from the IT engineering pool</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <select id="filter-status" class="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 outline-none text-slate-700">
+                <option value="all">All Statuses</option>
+                <option value="Open">Open</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+              </select>
+              <select id="filter-category" class="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 outline-none text-slate-700">
+                <option value="all">All Categories</option>
+                <option value="Network">Network</option>
+                <option value="Hardware">Hardware</option>
+                <option value="Software">Software</option>
+                <option value="Security">Security</option>
+                <option value="Account">Account</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-700">
+              <thead class="bg-slate-50/70 border-b border-slate-200/80 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                <tr>
+                  <th class="py-3 px-4">Ticket ID</th>
+                  <th class="py-3 px-4">Subject & Description</th>
+                  <th class="py-3 px-4">Category</th>
+                  <th class="py-3 px-4">Priority</th>
+                  <th class="py-3 px-4">Status</th>
+                  <th class="py-3 px-4">Assigned Agent</th>
+                  <th class="py-3 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="tickets-table-body" class="divide-y divide-slate-100">
+                <!-- Populated dynamically via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= VIEW 2: CREATE TICKET FORM ================= -->
+      <section id="view-new-ticket" class="hidden max-w-3xl mx-auto space-y-6">
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs">
+          <div class="pb-5 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Submit a New IT Service Request</h2>
+              <p class="text-xs text-slate-500 mt-0.5">Fill in the details below. Our AI copilot will analyze the issue and recommend classification.</p>
+            </div>
+            <span class="text-xs text-brand-600 bg-brand-50 px-2.5 py-1 rounded-full font-semibold border border-brand-200">HelpDesk AI v2.4</span>
+          </div>
+
+          <form id="create-ticket-form" class="mt-6 space-y-4 text-xs">
+            <!-- Title -->
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Issue Title *</label>
+              <input id="form-title" type="text" required placeholder="e.g. Cannot access GitLab CI/CD Runner from corporate Wi-Fi" class="w-full border border-slate-200 rounded-xl p-3 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 text-slate-800">
+            </div>
+
+            <!-- Description -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="font-semibold text-slate-700">Detailed Description *</label>
+                <button type="button" id="btn-ai-analyze" class="text-[11px] text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1">
+                  <span>⚡ AI Auto-Fill Category & Priority</span>
+                </button>
+              </div>
+              <textarea id="form-description" rows="4" required placeholder="Explain symptoms, exact error messages, affected device, when it started, and troubleshooting steps already taken..." class="w-full border border-slate-200 rounded-xl p-3 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 text-slate-800 resize-none"></textarea>
+            </div>
+
+            <!-- AI Real-Time Suggestion Box (Interactive Copilot) -->
+            <div id="form-ai-box" class="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50/70 border border-brand-200 text-slate-700 space-y-2">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-brand-600 animate-ping"></span>
+                  <span class="font-bold text-brand-800 text-xs">AI Ticket Triage Assistant</span>
+                </div>
+                <span class="text-[10px] text-slate-500">Advisory suggestion</span>
+              </div>
+              <p id="ai-box-reasoning" class="text-[11px] text-slate-600">Type in your issue title and description above to trigger automated categorization and priority diagnosis.</p>
+              <div id="ai-box-actions" class="hidden items-center gap-2 pt-1">
+                <span id="ai-suggested-tags" class="text-[10px] font-semibold bg-white border border-brand-200 px-2 py-0.5 rounded text-brand-700">Suggested: Network • High Priority</span>
+                <button type="button" id="btn-apply-ai-form" class="text-[10px] bg-brand-600 hover:bg-brand-700 text-white font-medium px-2 py-0.5 rounded shadow-xs">Apply Suggestion</button>
+              </div>
+            </div>
+
+            <!-- Dropdowns Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Category *</label>
+                <select id="form-category" class="w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:border-brand-500 bg-white text-slate-800">
+                  <option value="Network">Network & Wi-Fi</option>
+                  <option value="Hardware">Hardware & Laptops</option>
+                  <option value="Software">Software & Cloud Services</option>
+                  <option value="Account">Account, SSO & VPN</option>
+                  <option value="Security">Security & Access</option>
+                  <option value="Other">Other Request</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Priority Level *</label>
+                <select id="form-priority" class="w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:border-brand-500 bg-white text-slate-800">
+                  <option value="Low">Low (General question / 48h)</option>
+                  <option value="Medium" selected>Medium (Standard request / 24h)</option>
+                  <option value="High">High (Impacting work / 4h)</option>
+                  <option value="Critical">Critical (System down / 1h)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Department</label>
+                <select id="form-department" class="w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:border-brand-500 bg-white text-slate-800">
+                  <option value="Engineering">AI & Engineering</option>
+                  <option value="Product">Product & Design</option>
+                  <option value="Operations">Operations</option>
+                  <option value="Finance">Finance & HR</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Affected Device -->
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Affected Device / Asset Tag</label>
+              <input id="form-device" type="text" placeholder="e.g. Dell Latitude 7440 (Asset #IT-DEL-8921)" class="w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:border-brand-500 text-slate-800">
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+              <button type="button" id="btn-cancel-ticket" class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium text-xs transition">Cancel</button>
+              <button type="submit" id="btn-submit-ticket" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-md shadow-brand-600/30 transition flex items-center gap-2">
+                <span>Submit Ticket</span>
+                <span>→</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ================= VIEW 3: TICKET DETAILS & CONVERSATION ================= -->
+      <section id="view-ticket-detail" class="hidden space-y-6">
+        <!-- Back Navigation -->
+        <div class="flex items-center justify-between">
+          <button id="btn-back-to-tickets" class="flex items-center gap-2 text-xs font-semibold text-brand-600 hover:text-brand-700 transition">
+            <span>← Back to Ticket Queue</span>
+          </button>
+          <div class="flex items-center gap-2">
+            <span id="detail-ticket-id" class="font-mono text-xs font-bold text-slate-500 bg-slate-200 px-2.5 py-1 rounded-md">IT-2026-00101</span>
+            <span id="detail-sla-badge" class="text-[11px] font-semibold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-md border border-amber-300">SLA: 2h 45m left</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Main Conversation & History (2 Cols) -->
+          <div class="lg:col-span-2 space-y-5">
+            <!-- Ticket Header Card -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3">
+              <div class="flex items-start justify-between gap-3">
+                <h2 id="detail-title" class="text-base font-bold text-slate-900 leading-snug">Cannot connect to internal GitLab CI/CD runner from workstation</h2>
+                <div id="detail-status-pill" class="shrink-0 bg-brand-50 text-brand-700 border border-brand-200 text-xs font-bold px-2.5 py-1 rounded-full">In Progress</div>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-y-1 gap-x-4 text-xs text-slate-500 pt-1 border-t border-slate-100">
+                <span>Category: <strong id="detail-category" class="text-slate-800">Network</strong></span>
+                <span>Priority: <strong id="detail-priority" class="text-red-600">High</strong></span>
+                <span>Requester: <strong id="detail-requester" class="text-slate-800">Pocharam Jayanth</strong></span>
+                <span>Created: <strong id="detail-created" class="text-slate-800">Today, 10:15 AM</strong></span>
+              </div>
+
+              <p id="detail-description" class="text-xs text-slate-700 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                Whenever I trigger the automated testing pipeline on the local runner node, the docker daemon fails with connection timeout. Corporate Wi-Fi seems to be blocking port 2376 or subnet 192.168.4.0/24.
+              </p>
+            </div>
+
+            <!-- Conversation Timeline -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
+              <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Conversation & Activity Timeline</h3>
+              
+              <div id="timeline-comments" class="space-y-4">
+                <!-- Comment 1 -->
+                <div class="flex gap-3">
+                  <div class="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-xs shrink-0">PJ</div>
+                  <div class="flex-1 bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="font-bold text-slate-800">Pocharam Jayanth (Requester)</span>
+                      <span class="text-[10px] text-slate-400">10:15 AM</span>
+                    </div>
+                    <p class="text-slate-700">Created ticket with logs attached from Swecha runner build #49.</p>
+                  </div>
+                </div>
+
+                <!-- Comment 2: Agent Response -->
+                <div class="flex gap-3">
+                  <div class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0">IT</div>
+                  <div class="flex-1 bg-emerald-50/60 border border-emerald-200 rounded-2xl p-3 text-xs">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="font-bold text-emerald-900">Vikram Rao (IT Senior Engineer)</span>
+                      <span class="text-[10px] text-emerald-600">10:42 AM</span>
+                    </div>
+                    <p class="text-emerald-900">Investigating the subnet routing policy on our Hyderabad gateway switch. Testing rule overrides for port 2376 now.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Comment Input Box -->
+              <div class="pt-3 border-t border-slate-100 space-y-2">
+                <textarea id="input-new-comment" rows="2" placeholder="Write a reply or internal note..." class="w-full border border-slate-200 rounded-xl p-3 text-xs outline-none focus:border-brand-500 text-slate-800 resize-none"></textarea>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <label class="text-[11px] text-slate-500 flex items-center gap-1 cursor-pointer">
+                      <input id="check-internal-note" type="checkbox" class="accent-brand-600">
+                      <span>Internal note (Agents only)</span>
+                    </label>
+                  </div>
+                  <button id="btn-post-comment" class="px-4 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-xs transition">Post Update</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Sidebar: AI Copilot & Status Controls (1 Col) -->
+          <div class="space-y-5">
+            <!-- AI Copilot Panel -->
+            <div class="bg-gradient-to-br from-navy-900 to-slate-900 text-white rounded-2xl p-5 shadow-lg space-y-3.5 border border-slate-800">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="w-6 h-6 rounded-lg bg-gradient-to-tr from-brand-500 to-purple-500 flex items-center justify-center text-xs">⚡</div>
+                  <h4 class="font-bold text-xs tracking-wide">HelpDesk AI Copilot</h4>
+                </div>
+                <span class="text-[10px] bg-brand-500/20 text-brand-300 px-2 py-0.5 rounded-full border border-brand-500/30">Active Diagnosis</span>
+              </div>
+
+              <div class="bg-white/5 border border-white/10 rounded-xl p-3 space-y-1.5 text-xs">
+                <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Classification Confidence</span>
+                <div class="flex items-center justify-between">
+                  <span class="text-slate-200 font-medium">Category: Network</span>
+                  <span class="text-emerald-400 font-mono text-xs">96% match</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-slate-200 font-medium">Recommended: High Priority</span>
+                  <span class="text-amber-400 font-mono text-xs">SLA: 4h</span>
+                </div>
+              </div>
+
+              <div class="space-y-1 text-xs">
+                <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Recommended Troubleshooting</span>
+                <p id="ai-reco-steps" class="text-slate-300 text-[11px] leading-relaxed">
+                  1. Check if user is connected to <code>Corporate-Corp-Secure</code> instead of <code>Guest-IoT</code>.<br>
+                  2. Whitelist Docker daemon runner IP in the FortiGate firewall profile.<br>
+                  3. Verify TLS certificate on port 2376.
+                </p>
+              </div>
+
+              <div class="pt-2 border-t border-white/10 flex gap-2">
+                <button id="btn-ai-draft-reply" class="flex-1 py-2 px-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition text-center shadow-sm">
+                  Draft Agent Reply
+                </button>
+              </div>
+            </div>
+
+            <!-- Agent Assignment & Actions Card -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4 text-xs">
+              <h4 class="font-bold text-slate-900 uppercase tracking-wider text-[11px]">Ticket Controls</h4>
+
+              <div>
+                <label class="block text-slate-500 mb-1 font-medium">Assigned Engineer</label>
+                <select id="detail-assignee-select" class="w-full border border-slate-200 rounded-xl p-2 bg-slate-50 text-slate-800 font-medium outline-none">
+                  <option value="Vikram Rao">Vikram Rao (Senior Network)</option>
+                  <option value="Jayanth P.">Jayanth P. (Self / AI Dev)</option>
+                  <option value="Ananya Sharma">Ananya Sharma (Cloud Infrastructure)</option>
+                  <option value="Unassigned">Unassigned Pool</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-slate-500 mb-1 font-medium">Ticket Lifecycle State</label>
+                <select id="detail-status-select" class="w-full border border-slate-200 rounded-xl p-2 bg-slate-50 text-slate-800 font-medium outline-none">
+                  <option value="Open">Open</option>
+                  <option value="In Progress" selected>In Progress</option>
+                  <option value="Pending">Pending User Info</option>
+                  <option value="Resolved">Resolved</option>
+                  <option value="Closed">Closed</option>
+                </select>
+              </div>
+
+              <div class="pt-2 border-t border-slate-100 flex flex-col gap-2">
+                <button id="btn-save-ticket-status" class="w-full py-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl transition shadow-xs">
+                  Save Ticket State
+                </button>
+                <button id="btn-resolve-quick" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition shadow-xs">
+                  Mark as Resolved ✓
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= VIEW 4: IT AGENT WORKSPACE / QUEUE ================= -->
+      <section id="view-agent-queue" class="hidden space-y-6">
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-base font-bold text-slate-900">IT Support Engineer Workspace</h2>
+              <span class="text-xs bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full border border-amber-200">Tier 2 Support Pool</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">Filter, claim, troubleshoot, and resolve employee service requests against company SLA targets.</p>
+          </div>
+          
+          <div class="flex items-center gap-2">
+            <button id="btn-claim-next" class="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold transition shadow-sm flex items-center gap-1.5">
+              <span>⚡ Auto-Claim Next Priority Ticket</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="bg-white rounded-xl border border-slate-200/80 p-3 shadow-xs flex flex-wrap items-center gap-3 text-xs">
+          <div class="flex items-center gap-1.5 text-slate-500 font-semibold text-[11px] uppercase">
+            <span>Filter Queue:</span>
+          </div>
+          <button class="queue-tab px-3 py-1 rounded-lg bg-brand-600 text-white font-medium" data-tab="all">All Queue (12)</button>
+          <button class="queue-tab px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium" data-tab="critical">Critical / High (4)</button>
+          <button class="queue-tab px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium" data-tab="unassigned">Unassigned (5)</button>
+          <button class="queue-tab px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium" data-tab="sla-risk">SLA Risk < 1h (2)</button>
+        </div>
+
+        <!-- Queue Table -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-700">
+              <thead class="bg-slate-50/70 border-b border-slate-200/80 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                <tr>
+                  <th class="py-3 px-4">Ticket</th>
+                  <th class="py-3 px-4">Requester</th>
+                  <th class="py-3 px-4">Category</th>
+                  <th class="py-3 px-4">Priority</th>
+                  <th class="py-3 px-4">SLA Time Remaining</th>
+                  <th class="py-3 px-4">Assigned Agent</th>
+                  <th class="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="agent-queue-body" class="divide-y divide-slate-100">
+                <!-- Dynamically rendered -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= VIEW 5: ADMIN & SLA ANALYTICS ================= -->
+      <section id="view-analytics" class="hidden space-y-6">
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">Enterprise Support Analytics & SLA Compliance</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Real-time performance metrics, ticket throughput, and departmental distribution.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-500 font-medium">Window:</span>
+            <select class="text-xs border border-slate-200 rounded-lg px-3 py-1.5 bg-slate-50 text-slate-800 font-medium outline-none">
+              <option>Last 30 Days (October 2026)</option>
+              <option>Quarter to Date (Q4 2026)</option>
+              <option>Full Year 2026</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Executive Metrics Row -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
+            <span class="text-xs text-slate-500 font-medium">Total Monthly Volume</span>
+            <div class="flex items-baseline gap-2 mt-1">
+              <span class="text-2xl font-bold text-slate-900">428</span>
+              <span class="text-[11px] font-semibold text-emerald-600">▲ +12% MoM</span>
+            </div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
+            <span class="text-xs text-slate-500 font-medium">Avg First Response Time</span>
+            <div class="flex items-baseline gap-2 mt-1">
+              <span class="text-2xl font-bold text-slate-900">14 min</span>
+              <span class="text-[11px] font-semibold text-emerald-600">⚡ 3x faster with AI</span>
+            </div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
+            <span class="text-xs text-slate-500 font-medium">SLA Resolution Rate</span>
+            <div class="flex items-baseline gap-2 mt-1">
+              <span class="text-2xl font-bold text-emerald-600">98.4%</span>
+              <span class="text-[11px] text-slate-400">Target: 95%</span>
+            </div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
+            <span class="text-xs text-slate-500 font-medium">AI Auto-Triage Accuracy</span>
+            <div class="flex items-baseline gap-2 mt-1">
+              <span class="text-2xl font-bold text-brand-600">92.1%</span>
+              <span class="text-[11px] font-semibold text-brand-600">394 verified</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Ticket Trend Chart -->
+          <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Ticket Volume vs Resolutions</h3>
+              <span class="text-[11px] text-slate-400">Weekly Throughput</span>
+            </div>
+            <div class="relative h-64">
+              <canvas id="chart-volume"></canvas>
+            </div>
+          </div>
+
+          <!-- Category Breakdown Chart -->
+          <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Requests by Category</h3>
+              <span class="text-[11px] text-slate-400">Monthly Distribution</span>
+            </div>
+            <div class="relative h-64">
+              <canvas id="chart-categories"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Agent Leaderboard -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3">
+          <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Support Engineer Performance & Load</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-700">
+              <thead class="bg-slate-50 border-b border-slate-200 text-[11px] text-slate-500 font-semibold uppercase">
+                <tr>
+                  <th class="py-2.5 px-3">Engineer Name</th>
+                  <th class="py-2.5 px-3">Specialty</th>
+                  <th class="py-2.5 px-3">Resolved (Month)</th>
+                  <th class="py-2.5 px-3">Avg Resolution Time</th>
+                  <th class="py-2.5 px-3">Customer CSAT</th>
+                  <th class="py-2.5 px-3">Current Active Load</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr>
+                  <td class="py-3 px-3 font-semibold text-slate-900">Vikram Rao</td>
+                  <td class="py-3 px-3 text-slate-500">Network & Infra</td>
+                  <td class="py-3 px-3 font-bold text-brand-600">84 tickets</td>
+                  <td class="py-3 px-3">1h 12m</td>
+                  <td class="py-3 px-3 text-amber-500 font-bold">★ 4.9 / 5.0</td>
+                  <td class="py-3 px-3"><span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-[10px] font-bold">3 active (Optimal)</span></td>
+                </tr>
+                <tr>
+                  <td class="py-3 px-3 font-semibold text-slate-900">Ananya Sharma</td>
+                  <td class="py-3 px-3 text-slate-500">Cloud & Dev Tools</td>
+                  <td class="py-3 px-3 font-bold text-brand-600">76 tickets</td>
+                  <td class="py-3 px-3">1h 45m</td>
+                  <td class="py-3 px-3 text-amber-500 font-bold">★ 4.8 / 5.0</td>
+                  <td class="py-3 px-3"><span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-[10px] font-bold">4 active</span></td>
+                </tr>
+                <tr>
+                  <td class="py-3 px-3 font-semibold text-slate-900">Pocharam Jayanth (Lead)</td>
+                  <td class="py-3 px-3 text-slate-500">AI Automation & Security</td>
+                  <td class="py-3 px-3 font-bold text-brand-600">92 tickets</td>
+                  <td class="py-3 px-3">48m</td>
+                  <td class="py-3 px-3 text-amber-500 font-bold">★ 5.0 / 5.0</td>
+                  <td class="py-3 px-3"><span class="bg-brand-100 text-brand-800 px-2 py-0.5 rounded-full text-[10px] font-bold">2 active</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= VIEW 6: KNOWLEDGE BASE (RAG SEARCH) ================= -->
+      <section id="view-knowledge" class="hidden max-w-4xl mx-auto space-y-6">
+        <!-- Search Hero -->
+        <div class="bg-gradient-to-r from-navy-900 to-indigo-900 rounded-2xl p-8 text-white text-center shadow-lg space-y-4">
+          <span class="px-2.5 py-1 rounded-full bg-brand-500/20 text-brand-300 text-xs font-semibold border border-brand-500/30">Semantic RAG Help Center</span>
+          <h2 class="text-2xl font-extrabold tracking-tight">How can IT support assist you today?</h2>
+          <p class="text-xs text-slate-300 max-w-md mx-auto">Search approved enterprise troubleshooting playbooks, VPN connection steps, password resets, and developer environment setup.</p>
+          
+          <div class="max-w-xl mx-auto relative pt-2">
+            <input id="kb-search-input" type="text" placeholder="Search keywords: 'Wi-Fi', 'VPN setup', 'GitLab runner', 'SSO password'..." class="w-full bg-white text-slate-900 text-xs rounded-xl pl-10 pr-4 py-3 shadow-lg outline-none focus:ring-2 focus:ring-brand-500">
+            <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-5.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+        </div>
+
+        <!-- Article Categories -->
+        <div id="kb-articles-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Article 1 -->
+          <div class="kb-card bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-brand-500/50 hover:shadow-md transition cursor-pointer" data-id="kb-1">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-xs font-bold text-brand-600 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-100">Network & VPN</span>
+              <span class="text-[10px] text-slate-400">Updated Oct 2026</span>
+            </div>
+            <h3 class="font-bold text-slate-900 text-sm">How to Connect to Corporate Wi-Fi (802.1X EAP-TLS)</h3>
+            <p class="text-slate-500 text-xs mt-1 leading-relaxed">Step-by-step instructions to install root CA certificate and connect macOS, Windows 11, and Linux workstations to internal enterprise networks.</p>
+            <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100">
+              <span>Read time: 2 min</span>
+              <span class="text-brand-600 font-semibold hover:underline">Read Playbook →</span>
+            </div>
+          </div>
+
+          <!-- Article 2 -->
+          <div class="kb-card bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-brand-500/50 hover:shadow-md transition cursor-pointer" data-id="kb-2">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">DevOps & CI/CD</span>
+              <span class="text-[10px] text-slate-400">Swecha Standard</span>
+            </div>
+            <h3 class="font-bold text-slate-900 text-sm">Configuring Local Docker & GitLab CI/CD Runner</h3>
+            <p class="text-slate-500 text-xs mt-1 leading-relaxed">Setting up rootless Docker containers, configuring proxy environment variables for GitLab Runner, and enabling TLS port 2376 forwarding.</p>
+            <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100">
+              <span>Read time: 4 min</span>
+              <span class="text-brand-600 font-semibold hover:underline">Read Playbook →</span>
+            </div>
+          </div>
+
+          <!-- Article 3 -->
+          <div class="kb-card bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-brand-500/50 hover:shadow-md transition cursor-pointer" data-id="kb-3">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-xs font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100">Access & Security</span>
+              <span class="text-[10px] text-slate-400">Self-Service</span>
+            </div>
+            <h3 class="font-bold text-slate-900 text-sm">Okta Single Sign-On (SSO) & 2FA Recovery</h3>
+            <p class="text-slate-500 text-xs mt-1 leading-relaxed">How to reset your corporate Google Workspace and Okta MFA tokens using verified recovery codes without calling the service desk.</p>
+            <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100">
+              <span>Read time: 3 min</span>
+              <span class="text-brand-600 font-semibold hover:underline">Read Playbook →</span>
+            </div>
+          </div>
+
+          <!-- Article 4 -->
+          <div class="kb-card bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-brand-500/50 hover:shadow-md transition cursor-pointer" data-id="kb-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">Hardware</span>
+              <span class="text-[10px] text-slate-400">IT Diagnostics</span>
+            </div>
+            <h3 class="font-bold text-slate-900 text-sm">Laptop Peripheral & USB-C Dock Troubleshooting</h3>
+            <p class="text-slate-500 text-xs mt-1 leading-relaxed">Fixing dual monitor display detection issues, USB audio drops, and Thunderbolt 4 power delivery handshake errors.</p>
+            <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100">
+              <span>Read time: 3 min</span>
+              <span class="text-brand-600 font-semibold hover:underline">Read Playbook →</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= VIEW 7: USERS & SLA POLICY CONFIGURATION ================= -->
+      <section id="view-users" class="hidden space-y-6">
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">IT Personnel Directory & SLA Policies</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Manage support staff permissions, role escalations, and contractual response commitments.</p>
+          </div>
+          <button id="btn-add-staff" class="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold transition shadow-sm">
+            + Provision New User
+          </button>
+        </div>
+
+        <!-- SLA Matrix -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3">
+          <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Configured Company SLA Policies</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+            <div class="p-3.5 rounded-xl border border-red-200 bg-red-50/50">
+              <span class="font-bold text-red-700 block">Critical (P1)</span>
+              <span class="text-[11px] text-slate-600 mt-1 block">Response Target: <strong>15 mins</strong></span>
+              <span class="text-[11px] text-slate-600 block">Resolution Target: <strong>1 hour</strong></span>
+            </div>
+            <div class="p-3.5 rounded-xl border border-amber-200 bg-amber-50/50">
+              <span class="font-bold text-amber-700 block">High (P2)</span>
+              <span class="text-[11px] text-slate-600 mt-1 block">Response Target: <strong>1 hour</strong></span>
+              <span class="text-[11px] text-slate-600 block">Resolution Target: <strong>4 hours</strong></span>
+            </div>
+            <div class="p-3.5 rounded-xl border border-blue-200 bg-blue-50/50">
+              <span class="font-bold text-brand-700 block">Medium (P3)</span>
+              <span class="text-[11px] text-slate-600 mt-1 block">Response Target: <strong>4 hours</strong></span>
+              <span class="text-[11px] text-slate-600 block">Resolution Target: <strong>24 hours</strong></span>
+            </div>
+            <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50">
+              <span class="font-bold text-slate-700 block">Low (P4)</span>
+              <span class="text-[11px] text-slate-600 mt-1 block">Response Target: <strong>12 hours</strong></span>
+              <span class="text-[11px] text-slate-600 block">Resolution Target: <strong>48 hours</strong></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- JavaScript Application Logic -->
+  <script>
+    // State Data
+    const state = {
+      currentRole: 'employee',
+      currentView: 'dashboard',
+      selectedTicketId: null,
+      tickets: [
+        {
+          id: 'IT-2026-00101',
+          title: 'Cannot connect to internal GitLab CI/CD runner from workstation',
+          description: 'Whenever I trigger the automated testing pipeline on the local runner node, the docker daemon fails with connection timeout. Corporate Wi-Fi seems to be blocking port 2376 or subnet 192.168.4.0/24.',
+          category: 'Network',
+          priority: 'High',
+          status: 'In Progress',
+          requester: 'Pocharam Jayanth',
+          assignee: 'Vikram Rao',
+          created: 'Today, 10:15 AM',
+          sla: '2h 45m remaining'
+        },
+        {
+          id: 'IT-2026-00102',
+          title: 'Requesting JetBrains PyCharm Professional & Postman Enterprise license',
+          description: 'Required for LLM inference testing and local FastAPI RAG service integration in the upcoming enterprise release.',
+          category: 'Software',
+          priority: 'Medium',
+          status: 'Open',
+          requester: 'Pocharam Jayanth',
+          assignee: 'Unassigned',
+          created: 'Yesterday, 3:30 PM',
+          sla: '18h remaining'
+        },
+        {
+          id: 'IT-2026-00103',
+          title: 'Laptop USB-C Thunderbolt docking station monitor flicker',
+          description: 'Second monitor goes black every 15 minutes when running GPU-intensive computer vision scripts.',
+          category: 'Hardware',
+          priority: 'Medium',
+          status: 'Open',
+          requester: 'Pocharam Jayanth',
+          assignee: 'Unassigned',
+          created: 'Oct 14, 11:00 AM',
+          sla: '21h remaining'
+        },
+        {
+          id: 'IT-2026-00098',
+          title: 'GitLab personal access token expired for automated build bot',
+          description: 'Reset required for service account running automated repository compliance checks.',
+          category: 'Security',
+          priority: 'Low',
+          status: 'Resolved',
+          requester: 'Pocharam Jayanth',
+          assignee: 'Ananya Sharma',
+          created: 'Oct 12, 09:20 AM',
+          sla: 'Resolved in 38m'
+        },
+        {
+          id: 'IT-2026-00095',
+          title: 'Access permission to Hyderabad Office AWS Staging S3 bucket',
+          description: 'Need read/write access to test training data embeddings for the internal medical chatbot.',
+          category: 'Account',
+          priority: 'Medium',
+          status: 'Resolved',
+          requester: 'Pocharam Jayanth',
+          assignee: 'Vikram Rao',
+          created: 'Oct 10, 02:15 PM',
+          sla: 'Resolved in 2h 10m'
+        }
+      ]
+    };
+
+    // Role Switcher Setup
+    const roleSelector = document.getElementById('role-selector');
+    const currentRoleBadge = document.getElementById('current-role-badge');
+    const profileName = document.getElementById('profile-name');
+    const profileDept = document.getElementById('profile-dept');
+    const adminNavGroup = document.getElementById('admin-nav-group');
+    const navAgentQueue = document.getElementById('nav-agent-queue');
+
+    roleSelector.addEventListener('change', (e) => {
+      const role = e.target.value;
+      state.currentRole = role;
+      
+      if (role === 'employee') {
+        currentRoleBadge.textContent = 'Employee';
+        currentRoleBadge.className = 'text-[10px] font-semibold text-brand-300 bg-brand-600/30 px-1.5 py-0.2 rounded';
+        profileName.textContent = 'Pocharam Jayanth';
+        profileDept.textContent = 'AI & ML Engineer • Hyderabad';
+        showToast('Switched to Employee mode (Pocharam Jayanth)');
+        switchView('dashboard');
+      } else if (role === 'agent') {
+        currentRoleBadge.textContent = 'IT Agent';
+        currentRoleBadge.className = 'text-[10px] font-semibold text-amber-300 bg-amber-600/30 px-1.5 py-0.2 rounded';
+        profileName.textContent = 'Vikram Rao';
+        profileDept.textContent = 'Tier 2 Support Specialist';
+        showToast('Switched to Support Agent mode (Queue management unlocked)');
+        switchView('agent-queue');
+      } else if (role === 'admin') {
+        currentRoleBadge.textContent = 'IT Admin';
+        currentRoleBadge.className = 'text-[10px] font-semibold text-purple-300 bg-purple-600/30 px-1.5 py-0.2 rounded';
+        profileName.textContent = 'Suresh K. (Director)';
+        profileDept.textContent = 'Head of IT Infrastructure';
+        showToast('Switched to Administrator mode (Full Analytics)');
+        switchView('analytics');
+      }
+    });
+
+    // Navigation Switcher
+    const navButtons = document.querySelectorAll('.nav-btn');
+    const views = {
+      dashboard: document.getElementById('view-dashboard'),
+      'new-ticket': document.getElementById('view-new-ticket'),
+      'ticket-detail': document.getElementById('view-ticket-detail'),
+      'agent-queue': document.getElementById('view-agent-queue'),
+      analytics: document.getElementById('view-analytics'),
+      knowledge: document.getElementById('view-knowledge'),
+      users: document.getElementById('view-users'),
+      tickets: document.getElementById('view-dashboard') // scrolls to table
+    };
+
+    const viewTitles = {
+      dashboard: 'Employee Portal Overview',
+      'new-ticket': 'Submit IT Service Request',
+      'ticket-detail': 'Ticket Investigation & AI Copilot',
+      'agent-queue': 'IT Support Agent Queue',
+      analytics: 'SLA Compliance & IT Operations Analytics',
+      knowledge: 'Approved Technical Playbooks & Knowledge Base',
+      users: 'Support Staff & SLA Policy Management'
+    };
+
+    function switchView(target) {
+      state.currentView = target;
+      
+      // Update sidebar active button
+      navButtons.forEach(btn => {
+        if (btn.dataset.view === target) {
+          btn.className = 'nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-white bg-brand-600 shadow-sm transition';
+        } else {
+          btn.className = 'nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition';
+        }
+      });
+
+      // Show hide sections
+      Object.keys(views).forEach(key => {
+        if (views[key]) {
+          if (key === target) {
+            views[key].classList.remove('hidden');
+          } else {
+            views[key].classList.add('hidden');
+          }
+        }
+      });
+
+      // Update header title
+      document.getElementById('view-title').textContent = viewTitles[target] || 'IT Service Desk';
+
+      // If switching to analytics, render chart if not yet done
+      if (target === 'analytics') {
+        renderAnalyticsCharts();
+      }
+
+      // Re-render tables
+      renderEmployeeTickets();
+      renderAgentQueue();
+    }
+
+    navButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const view = btn.dataset.view;
+        switchView(view);
+      });
+    });
+
+    document.getElementById('header-create-ticket-btn').addEventListener('click', () => switchView('new-ticket'));
+    document.getElementById('banner-create-btn').addEventListener('click', () => switchView('new-ticket'));
+    document.getElementById('banner-kb-btn').addEventListener('click', () => switchView('knowledge'));
+    document.getElementById('btn-cancel-ticket').addEventListener('click', () => switchView('dashboard'));
+    document.getElementById('btn-back-to-tickets').addEventListener('click', () => switchView('dashboard'));
+
+    // Render Employee Table
+    function renderEmployeeTickets() {
+      const tbody = document.getElementById('tickets-table-body');
+      const statusFilter = document.getElementById('filter-status').value;
+      const categoryFilter = document.getElementById('filter-category').value;
+      
+      const filtered = state.tickets.filter(t => {
+        const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
+        const matchesCat = categoryFilter === 'all' || t.category === categoryFilter;
+        return matchesStatus && matchesCat;
+      });
+
+      tbody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-400">No tickets found matching the selected filters.</td></tr>`;
+        return;
+      }
+
+      filtered.forEach(ticket => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition cursor-pointer';
+
+        // Badge colors
+        let statusBadge = 'bg-brand-50 text-brand-700 border-brand-200';
+        if (ticket.status === 'Open') statusBadge = 'bg-amber-50 text-amber-700 border-amber-200';
+        if (ticket.status === 'Resolved') statusBadge = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+
+        let prioColor = 'text-slate-600';
+        if (ticket.priority === 'High' || ticket.priority === 'Critical') prioColor = 'text-red-600 font-bold';
+        if (ticket.priority === 'Medium') prioColor = 'text-amber-600 font-medium';
+
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-mono font-bold text-slate-900">${ticket.id}</td>
+          <td class="py-3 px-4 max-w-xs">
+            <span class="font-semibold text-slate-800 block truncate">${ticket.title}</span>
+            <span class="text-[11px] text-slate-400 block truncate">${ticket.description}</span>
+          </td>
+          <td class="py-3 px-4">
+            <span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[11px] font-medium">${ticket.category}</span>
+          </td>
+          <td class="py-3 px-4 ${prioColor}">
+            ${ticket.priority}
+          </td>
+          <td class="py-3 px-4">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge}">${ticket.status}</span>
+          </td>
+          <td class="py-3 px-4 text-slate-600">
+            ${ticket.assignee}
+          </td>
+          <td class="py-3 px-4 text-right">
+            <button class="btn-view-ticket px-3 py-1 rounded-lg bg-slate-100 hover:bg-brand-600 hover:text-white text-slate-700 text-xs font-semibold transition" data-id="${ticket.id}">
+              Open Detail
+            </button>
+          </td>
+        `;
+
+        tr.addEventListener('click', (e) => {
+          if (!e.target.classList.contains('btn-view-ticket')) {
+            openTicketDetail(ticket.id);
+          }
+        });
+
+        tbody.appendChild(tr);
+      });
+
+      // Attach button clicks
+      document.querySelectorAll('.btn-view-ticket').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openTicketDetail(btn.dataset.id);
+        });
+      });
+    }
+
+    document.getElementById('filter-status').addEventListener('change', renderEmployeeTickets);
+    document.getElementById('filter-category').addEventListener('change', renderEmployeeTickets);
+
+    // Open Ticket Detail View
+    function openTicketDetail(id) {
+      const ticket = state.tickets.find(t => t.id === id);
+      if (!ticket) return;
+
+      state.selectedTicketId = id;
+      document.getElementById('detail-ticket-id').textContent = ticket.id;
+      document.getElementById('detail-title').textContent = ticket.title;
+      document.getElementById('detail-description').textContent = ticket.description;
+      document.getElementById('detail-category').textContent = ticket.category;
+      document.getElementById('detail-priority').textContent = ticket.priority;
+      document.getElementById('detail-requester').textContent = ticket.requester;
+      document.getElementById('detail-created').textContent = ticket.created;
+      document.getElementById('detail-status-pill').textContent = ticket.status;
+      document.getElementById('detail-status-select').value = ticket.status;
+      document.getElementById('detail-assignee-select').value = ticket.assignee;
+      document.getElementById('detail-sla-badge').textContent = `SLA: ${ticket.sla}`;
+
+      switchView('ticket-detail');
+    }
+
+    // Save ticket state
+    document.getElementById('btn-save-ticket-status').addEventListener('click', () => {
+      const ticket = state.tickets.find(t => t.id === state.selectedTicketId);
+      if (!ticket) return;
+
+      const newStatus = document.getElementById('detail-status-select').value;
+      const newAssignee = document.getElementById('detail-assignee-select').value;
+
+      ticket.status = newStatus;
+      ticket.assignee = newAssignee;
+      document.getElementById('detail-status-pill').textContent = newStatus;
+
+      showToast(`Ticket ${ticket.id} updated: Status [${newStatus}], Assignee [${newAssignee}]`);
+    });
+
+    document.getElementById('btn-resolve-quick').addEventListener('click', () => {
+      const ticket = state.tickets.find(t => t.id === state.selectedTicketId);
+      if (!ticket) return;
+
+      ticket.status = 'Resolved';
+      document.getElementById('detail-status-select').value = 'Resolved';
+      document.getElementById('detail-status-pill').textContent = 'Resolved';
+      showToast(`Ticket ${ticket.id} marked as Resolved! SLA met.`);
+    });
+
+    // Add Comment
+    document.getElementById('btn-post-comment').addEventListener('click', () => {
+      const input = document.getElementById('input-new-comment');
+      const text = input.value.trim();
+      const isInternal = document.getElementById('check-internal-note').checked;
+      if (!text) return;
+
+      const commentsContainer = document.getElementById('timeline-comments');
+      const div = document.createElement('div');
+      div.className = 'flex gap-3';
+      
+      const badgeColor = isInternal ? 'bg-amber-600' : 'bg-brand-600';
+      const boxStyle = isInternal ? 'bg-amber-50/60 border-amber-200' : 'bg-slate-50 border-slate-200';
+      const authorLabel = isInternal ? 'Internal Engineering Note' : profileName.textContent;
+
+      div.innerHTML = `
+        <div class="w-8 h-8 rounded-full ${badgeColor} text-white flex items-center justify-center font-bold text-xs shrink-0">PJ</div>
+        <div class="flex-1 ${boxStyle} border rounded-2xl p-3 text-xs">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-slate-800">${authorLabel}</span>
+            <span class="text-[10px] text-slate-400">Just now</span>
+          </div>
+          <p class="text-slate-700">${text}</p>
+        </div>
+      `;
+
+      commentsContainer.appendChild(div);
+      input.value = '';
+      showToast('Comment recorded to ticket activity log.');
+    });
+
+    // AI Copilot Draft Reply
+    document.getElementById('btn-ai-draft-reply').addEventListener('click', () => {
+      const draft = "Hi Jayanth, we have inspected the Swecha GitLab runner configuration. We found an internal firewall rule blocking subnet 192.168.4.0/24 on port 2376. We are applying an exception now. Please re-trigger the pipeline in 5 minutes.";
+      document.getElementById('input-new-comment').value = draft;
+      showToast('⚡ AI suggested response copied to reply box!');
+    });
+
+    // AI Form Analysis
+    const formTitle = document.getElementById('form-title');
+    const formDesc = document.getElementById('form-description');
+    const aiReasoning = document.getElementById('ai-box-reasoning');
+    const aiActions = document.getElementById('ai-box-actions');
+    const btnAiAnalyze = document.getElementById('btn-ai-analyze');
+    const btnApplyAiForm = document.getElementById('btn-apply-ai-form');
+
+    function analyzeInput() {
+      const title = formTitle.value.toLowerCase();
+      const desc = formDesc.value.toLowerCase();
+      const combined = title + " " + desc;
+
+      if (!combined.trim()) return;
+
+      let detectedCat = 'Other';
+      let detectedPrio = 'Medium';
+      let reason = '';
+
+      if (combined.includes('wifi') || combined.includes('wi-fi') || combined.includes('vpn') || combined.includes('network') || combined.includes('runner') || combined.includes('port')) {
+        detectedCat = 'Network';
+        detectedPrio = 'High';
+        reason = 'Keywords detected: network/vpn/runner connectivity issue. Impacts engineering developer workflow.';
+      } else if (combined.includes('laptop') || combined.includes('screen') || combined.includes('keyboard') || combined.includes('dock') || combined.includes('battery')) {
+        detectedCat = 'Hardware';
+        detectedPrio = 'Medium';
+        reason = 'Physical device malfunction detected. Recommended triage to local IT hardware desk.';
+      } else if (combined.includes('license') || combined.includes('install') || combined.includes('pycharm') || combined.includes('software')) {
+        detectedCat = 'Software';
+        detectedPrio = 'Low';
+        reason = 'Software provisioning or tooling request. Standard 24h SLA applicable.';
+      }
+
+      aiReasoning.innerHTML = `<strong>Triage Insight:</strong> ${reason}`;
+      document.getElementById('ai-suggested-tags').textContent = `Suggested: ${detectedCat} • ${detectedPrio} Priority`;
+      aiActions.classList.remove('hidden');
+      aiActions.classList.add('flex');
+
+      btnApplyAiForm.onclick = () => {
+        document.getElementById('form-category').value = detectedCat;
+        document.getElementById('form-priority').value = detectedPrio;
+        showToast(`Applied AI Suggestions: Category → ${detectedCat}, Priority → ${detectedPrio}`);
+      };
+    }
+
+    formTitle.addEventListener('blur', analyzeInput);
+    formDesc.addEventListener('blur', analyzeInput);
+    btnAiAnalyze.addEventListener('click', analyzeInput);
+
+    // Form Submission
+    document.getElementById('create-ticket-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const newId = `IT-2026-001${state.tickets.length + 1}`;
+      const newTicket = {
+        id: newId,
+        title: formTitle.value,
+        description: formDesc.value,
+        category: document.getElementById('form-category').value,
+        priority: document.getElementById('form-priority').value,
+        status: 'Open',
+        requester: 'Pocharam Jayanth',
+        assignee: 'Unassigned',
+        created: 'Just now',
+        sla: '24h remaining'
+      };
+
+      state.tickets.unshift(newTicket);
+      document.getElementById('create-ticket-form').reset();
+      aiActions.classList.add('hidden');
+      aiReasoning.textContent = 'Type in your issue title and description above to trigger automated categorization.';
+
+      // Update counters
+      document.getElementById('kpi-total').textContent = state.tickets.length;
+      document.getElementById('kpi-open').textContent = state.tickets.filter(t => t.status === 'Open').length;
+      document.getElementById('ticket-badge-count').textContent = state.tickets.length;
+
+      showToast(`✅ Created ticket ${newId} successfully! Routing to IT pool.`);
+      switchView('dashboard');
+    });
+
+    // Render Agent Queue
+    function renderAgentQueue() {
+      const tbody = document.getElementById('agent-queue-body');
+      tbody.innerHTML = '';
+
+      state.tickets.forEach(ticket => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition';
+
+        let prioBadge = 'bg-slate-100 text-slate-700';
+        if (ticket.priority === 'High' || ticket.priority === 'Critical') prioBadge = 'bg-red-100 text-red-800 font-bold';
+        if (ticket.priority === 'Medium') prioBadge = 'bg-amber-100 text-amber-800 font-semibold';
+
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-mono font-bold text-brand-600">${ticket.id}</td>
+          <td class="py-3 px-4">
+            <span class="font-semibold text-slate-800 block">${ticket.requester}</span>
+            <span class="text-[11px] text-slate-400 block">${ticket.title}</span>
+          </td>
+          <td class="py-3 px-4">${ticket.category}</td>
+          <td class="py-3 px-4">
+            <span class="px-2 py-0.5 rounded text-[10px] ${prioBadge}">${ticket.priority}</span>
+          </td>
+          <td class="py-3 px-4 font-mono text-[11px] text-amber-600 font-semibold">
+            ${ticket.sla}
+          </td>
+          <td class="py-3 px-4">
+            ${ticket.assignee === 'Unassigned' ? '<span class="text-red-500 font-bold">Unassigned</span>' : ticket.assignee}
+          </td>
+          <td class="py-3 px-4 text-right space-x-1">
+            <button class="btn-claim-single px-2.5 py-1 rounded bg-brand-50 hover:bg-brand-600 hover:text-white text-brand-700 text-[11px] font-semibold transition" data-id="${ticket.id}">
+              Assign to Me
+            </button>
+            <button class="btn-inspect-single px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold transition" data-id="${ticket.id}">
+              Investigate
+            </button>
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+
+      // Claim buttons
+      document.querySelectorAll('.btn-claim-single').forEach(b => {
+        b.addEventListener('click', () => {
+          const id = b.dataset.id;
+          const t = state.tickets.find(item => item.id === id);
+          if (t) {
+            t.assignee = 'Vikram Rao';
+            t.status = 'In Progress';
+            renderAgentQueue();
+            showToast(`Assigned ${id} to Vikram Rao (Tier 2 Support)`);
+          }
+        });
+      });
+
+      document.querySelectorAll('.btn-inspect-single').forEach(b => {
+        b.addEventListener('click', () => {
+          openTicketDetail(b.dataset.id);
+        });
+      });
+    }
+
+    document.getElementById('btn-claim-next').addEventListener('click', () => {
+      const unassigned = state.tickets.find(t => t.assignee === 'Unassigned');
+      if (unassigned) {
+        unassigned.assignee = 'Vikram Rao';
+        unassigned.status = 'In Progress';
+        renderAgentQueue();
+        showToast(`Auto-claimed highest priority ticket: ${unassigned.id}`);
+      } else {
+        showToast('All pending tickets in queue are currently assigned!');
+      }
+    });
+
+    // Charts rendering
+    let volumeChartInstance = null;
+    let categoryChartInstance = null;
+
+    function renderAnalyticsCharts() {
+      if (volumeChartInstance) return; // already drawn
+
+      const ctxVol = document.getElementById('chart-volume');
+      const ctxCat = document.getElementById('chart-categories');
+
+      if (ctxVol && ctxCat && window.Chart) {
+        volumeChartInstance = new Chart(ctxVol, {
+          type: 'line',
+          data: {
+            labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+            datasets: [
+              {
+                label: 'Tickets Raised',
+                data: [95, 114, 108, 111],
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.3,
+                fill: true
+              },
+              {
+                label: 'Resolved within SLA',
+                data: [92, 110, 106, 109],
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                tension: 0.3,
+                fill: true
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } } },
+            scales: { y: { beginAtZero: false, min: 80 } }
+          }
+        });
+
+        categoryChartInstance = new Chart(ctxCat, {
+          type: 'doughnut',
+          data: {
+            labels: ['Network & VPN', 'Hardware & Peripherals', 'Software Licenses', 'Security & Access', 'Other'],
+            datasets: [{
+              data: [38, 26, 18, 12, 6],
+              backgroundColor: ['#2563eb', '#6366f1', '#06b6d4', '#f59e0b', '#94a3b8'],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } }
+          }
+        });
+      }
+    }
+
+    // Knowledge base cards
+    document.querySelectorAll('.kb-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const title = card.querySelector('h3').textContent;
+        showToast(`Opened KB Playbook: "${title}"`);
+      });
+    });
+
+    document.getElementById('kb-search-input').addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase();
+      document.querySelectorAll('.kb-card').forEach(card => {
+        const text = card.textContent.toLowerCase();
+        if (text.includes(q)) {
+          card.classList.remove('hidden');
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+    });
+
+    // Global Search
+    document.getElementById('global-search').addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      if (!q) {
+        renderEmployeeTickets();
+        return;
+      }
+      const match = state.tickets.find(t => t.id.toLowerCase().includes(q) || t.title.toLowerCase().includes(q));
+      if (match) {
+        showToast(`Found matching ticket ${match.id}`);
+      }
+    });
+
+    // Sidebar collapse toggle
+    const mainSidebar = document.getElementById('main-sidebar');
+    document.getElementById('toggle-sidebar-btn').addEventListener('click', () => {
+      mainSidebar.classList.toggle('-ml-64');
+    });
+
+    document.getElementById('btn-add-staff').addEventListener('click', () => {
+      showToast('Staff provisioning dialog: Supabase Auth integration ready');
+    });
+
+    // Toast Function
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastText = document.getElementById('toast-text');
+      toastText.textContent = msg;
+      toast.classList.remove('-translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('-translate-y-20', 'opacity-0');
+      }, 2800);
+    }
+
+    // Initial render
+    renderEmployeeTickets();
+  </script>
+</body>
+</html>
