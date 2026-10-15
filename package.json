@@ -4,7 +4,7 @@
   "description": "Enterprise IT HelpDesk System",
   "main": "index.html",
   "scripts": {
-    "test": "node -e \"console.log('✅ Automated frontend & static integration checks passed successfully!'); process.exit(0);\"",
+    "test": "node test_api.js",
     "start": "npx serve . -l 3000"
   },
   "dependencies": {
