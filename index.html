@@ -26,7 +26,8 @@
 
     const STATE = {
       currentView: 'dashboard',
-      currentUser: { name: 'Jayanth P.', role: 'Employee', workspace: 'Workspace #402', avatar: 'JP' },
+      currentUser: { name: 'Jayanth P.', role: 'Agent', workspace: 'Workspace #402', avatar: 'JP' },
+      authToken: 'demo-bearer-token',
       tickets: [],
       isLoading: false,
       errorMessage: null
@@ -42,7 +43,7 @@
         STATE.tickets = await res.json();
       } catch (err) {
         console.error('API Error:', err);
-        STATE.errorMessage = 'Could not connect to FastAPI server at ' + API_URL;
+        STATE.errorMessage = 'Could not connect to FastAPI backend at ' + API_URL;
       } finally {
         STATE.isLoading = false;
         render();
@@ -89,10 +90,10 @@
             </div>
 
             <nav class="p-4 space-y-1 text-xs font-medium">
-              <a href="javascript:void(0)" onclick="navigate('dashboard')" class="flex items-center gap-3 px-3 py-2.5 rounded-lg ${STATE.currentView === 'dashboard' ? 'text-white bg-blue-600 font-semibold shadow-sm' : 'hover:bg-slate-800 hover:text-white'}">
+              <a href="javascript:void(0)" onclick="navigate('dashboard')" class="flex items-center gap-3 px-3 py-2.5 rounded-lg ${STATE.currentView === 'dashboard' ? 'text-white bg-blue-600 font-semibold' : 'hover:bg-slate-800 hover:text-white'}">
                 <i class="fa-solid fa-chart-pie w-4"></i> Overview / Home
               </a>
-              <a href="javascript:void(0)" onclick="navigate('queue')" class="flex items-center gap-3 px-3 py-2.5 rounded-lg ${STATE.currentView === 'queue' ? 'text-white bg-blue-600 font-semibold shadow-sm' : 'hover:bg-slate-800 hover:text-white'}">
+              <a href="javascript:void(0)" onclick="navigate('queue')" class="flex items-center gap-3 px-3 py-2.5 rounded-lg ${STATE.currentView === 'queue' ? 'text-white bg-blue-600 font-semibold' : 'hover:bg-slate-800 hover:text-white'}">
                 <i class="fa-solid fa-list-check w-4"></i> IT Ticket Queue
               </a>
               <a href="javascript:void(0)" onclick="openModal()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 hover:text-white transition">
@@ -122,7 +123,7 @@
             <input type="text" placeholder="Search tickets or keywords..." class="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
           </div>
           <div class="flex items-center gap-4">
-            <button onclick="openModal()" class="px-4 py-2 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 shadow-sm shadow-blue-600/30">
+            <button onclick="openModal()" class="px-4 py-2 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 shadow-sm">
               <i class="fa-solid fa-plus"></i> Create Ticket
             </button>
           </div>
@@ -147,7 +148,7 @@
         <div class="max-w-7xl w-full mx-auto space-y-6">
           <div>
             <h1 class="text-2xl font-bold text-slate-900">Good morning, ${STATE.currentUser.name} 👋</h1>
-            <p class="text-xs text-slate-500">Here is your IT service dashboard.</p>
+            <p class="text-xs text-slate-500">Live API tickets loaded from Supabase PostgreSQL database.</p>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -219,9 +220,19 @@
     }
 
     function renderQueue() {
+      const unassigned = STATE.tickets.filter(t => !t.assignee_name || t.assignee_name === 'Unassigned');
       return `
         <div class="max-w-7xl w-full mx-auto space-y-6">
-          <h1 class="text-2xl font-bold text-slate-900">IT Support Ticket Queue</h1>
+          <div class="flex justify-between items-center">
+            <div>
+              <h1 class="text-2xl font-bold text-slate-900">IT Support Ticket Queue</h1>
+              <p class="text-xs text-slate-500">Interactive queue status controls and agent assignment.</p>
+            </div>
+            <span class="px-3 py-1 bg-blue-100 text-blue-700 font-semibold rounded-full text-xs">
+              ${unassigned.length} Unassigned
+            </span>
+          </div>
+
           <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <table class="w-full text-left border-collapse text-xs">
               <thead>
@@ -231,6 +242,7 @@
                   <th class="p-4">Priority</th>
                   <th class="p-4">Status Control</th>
                   <th class="p-4">Assignee</th>
+                  <th class="p-4">Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100">
@@ -238,9 +250,20 @@
                   <tr class="hover:bg-slate-50 transition">
                     <td class="p-4 font-bold text-blue-600">${t.ticket_number || t.id}</td>
                     <td class="p-4 font-medium">${t.title}</td>
-                    <td class="p-4">${t.priority}</td>
-                    <td class="p-4">${t.status}</td>
+                    <td class="p-4"><span class="${t.priority === 'critical' ? 'text-rose-600' : 'text-amber-600'} font-semibold uppercase">${t.priority}</span></td>
+                    <td class="p-4">
+                      <select onchange="updateTicketStatus('${t.id}', this.value)" class="bg-slate-50 border border-slate-200 rounded px-2 py-1 font-semibold text-xs">
+                        <option value="open" ${t.status === 'open' ? 'selected' : ''}>Open</option>
+                        <option value="in_progress" ${t.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
+                        <option value="resolved" ${t.status === 'resolved' ? 'selected' : ''}>Resolved</option>
+                      </select>
+                    </td>
                     <td class="p-4 text-slate-600">${t.assignee_name || 'Unassigned'}</td>
+                    <td class="p-4">
+                      <button onclick="assignTicketToMe('${t.id}')" class="px-3 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded text-xs font-semibold">
+                        Assign to Me
+                      </button>
+                    </td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -254,13 +277,22 @@
       return `
         <div id="ticketModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
           <div class="bg-white rounded-2xl w-full max-w-lg border border-slate-200 shadow-xl overflow-hidden p-6 space-y-4">
-            <h3 class="font-bold text-base text-slate-900">Create New Ticket</h3>
+            <div class="flex justify-between items-center border-b pb-3">
+              <h3 class="font-bold text-base text-slate-900">Create New Ticket</h3>
+              <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
             <form onsubmit="handleCreateTicket(event)" class="space-y-4">
-              <input type="text" id="modalTitle" required placeholder="Issue title..." class="w-full px-4 py-2 border rounded-lg text-xs">
-              <textarea id="modalDesc" required placeholder="Description..." class="w-full p-3 border rounded-lg text-xs"></textarea>
-              <div class="flex justify-end gap-2">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Issue Title *</label>
+                <input type="text" id="modalTitle" required placeholder="Issue title..." class="w-full px-4 py-2 border rounded-lg text-xs">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Description *</label>
+                <textarea id="modalDesc" required placeholder="Description..." class="w-full p-3 border rounded-lg text-xs" rows="3"></textarea>
+              </div>
+              <div class="flex justify-end gap-2 pt-2 border-t">
                 <button type="button" onclick="closeModal()" class="px-4 py-2 rounded text-xs bg-slate-100">Cancel</button>
-                <button type="submit" id="submitBtn" class="px-4 py-2 rounded text-xs bg-blue-600 text-white font-bold">Submit</button>
+                <button type="submit" id="submitBtn" class="px-4 py-2 rounded text-xs bg-blue-600 text-white font-bold">Submit Ticket</button>
               </div>
             </form>
           </div>
@@ -272,21 +304,65 @@
     function openModal() { document.getElementById('ticketModal').classList.replace('hidden', 'flex'); }
     function closeModal() { document.getElementById('ticketModal').classList.replace('flex', 'hidden'); }
 
+    async function updateTicketStatus(ticketId, newStatus) {
+      try {
+        const res = await fetch(`${API_URL}/tickets/${ticketId}`, {
+          method: 'PATCH',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${STATE.authToken}`
+          },
+          body: JSON.stringify({ status: newStatus })
+        });
+        if (!res.ok) throw new Error('Status update failed');
+        fetchTickets();
+      } catch (err) { alert('Failed to update ticket status.'); }
+    }
+
+    async function assignTicketToMe(ticketId) {
+      try {
+        const res = await fetch(`${API_URL}/tickets/${ticketId}`, {
+          method: 'PATCH',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${STATE.authToken}`
+          },
+          body: JSON.stringify({ assignee_name: STATE.currentUser.name, status: 'in_progress' })
+        });
+        if (!res.ok) throw new Error('Assignment failed');
+        fetchTickets();
+      } catch (err) { alert('Failed to assign ticket.'); }
+    }
+
     async function handleCreateTicket(e) {
       e.preventDefault();
-      const payload = {
-        title: document.getElementById('modalTitle').value,
-        description: document.getElementById('modalDesc').value,
-        category: 'network',
-        priority: 'medium'
-      };
-      await fetch(`${API_URL}/tickets`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      closeModal();
-      fetchTickets();
+      const title = document.getElementById('modalTitle').value.trim();
+      const desc = document.getElementById('modalDesc').value.trim();
+
+      if (!title || !desc) {
+        alert('Please fill in both title and description.');
+        return;
+      }
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.innerText = 'Saving...';
+
+      try {
+        const res = await fetch(`${API_URL}/tickets`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, description: desc, category: 'network', priority: 'medium' })
+        });
+        if (!res.ok) throw new Error('Failed to create ticket');
+        closeModal();
+        fetchTickets();
+      } catch (err) {
+        alert('Error creating ticket: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Submit Ticket';
+      }
     }
 
     window.onload = fetchTickets;
