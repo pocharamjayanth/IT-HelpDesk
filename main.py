@@ -11,7 +11,6 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from supabase import create_client, Client
 
-# Logging Setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("helpdesk-ai")
 
@@ -25,105 +24,86 @@ supabase: Optional[Client] = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global supabase
-    logger.info("Starting HelpDesk AI Production Backend Service...")
+    logger.info("Initializing HelpDesk AI Backend...")
     if not SUPABASE_URL or not SUPABASE_ANON_KEY:
         logger.critical("FATAL: Missing SUPABASE_URL or SUPABASE_ANON_KEY environment variables.")
         raise RuntimeError("Missing required Supabase environment configuration.")
     try:
         supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
-        logger.info("Successfully connected to Supabase PostgreSQL cluster.")
+        logger.info("Successfully established connection to Supabase PostgreSQL.")
     except Exception as e:
-        logger.critical(f"Failed to initialize Supabase client: {e}")
+        logger.critical(f"Failed to connect to Supabase: {e}")
         raise e
     yield
-    logger.info("Shutting down HelpDesk AI Backend Service...")
 
-app = FastAPI(
-    title="HelpDesk AI Enterprise API",
-    description="Production-Ready API for IT Support Lifecycle & AI Triage",
-    version="2.0.0",
-    lifespan=lifespan
-)
+app = FastAPI(title="HelpDesk AI Enterprise API", version="2.0.0", lifespan=lifespan)
 
-# CORS
 allowed_origins = [o.strip() for o in ALLOWED_ORIGINS_RAW.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins if allowed_origins else ["*"],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Models
-class TriageRequest(BaseModel):
+class TicketCreate(BaseModel):
     title: str = Field(..., min_length=2)
     description: str = Field(..., min_length=3)
+    category: Optional[str] = "general"
+    priority: Optional[str] = "medium"
 
-# --- HYBRID AI TRIAGE CLASSIFIER ---
-def classify_ticket_with_ai(title: str, description: str) -> dict:
-    text = f"{title.lower()} {description.lower()}"
-    
-    # Tier 1: Fast Heuristic Rule Scanner
-    rules = [
-        {
-            "category": "network",
-            "priority": "high",
-            "keywords": ["vpn", "wifi", "wi-fi", "dns", "gateway", "tunnel", "internet", "router", "ip address"],
-            "reason": "Rule Match: High-impact network infrastructure/connectivity keywords detected."
-        },
-        {
-            "category": "hardware",
-            "priority": "high",
-            "keywords": ["freeze", "docking", "monitor", "display", "screen", "battery", "laptop", "overheating", "keyboard"],
-            "reason": "Rule Match: Hardware device performance/failure keywords detected."
-        },
-        {
-            "category": "account_access",
-            "priority": "medium",
-            "keywords": ["sso", "okta", "password", "mfa", "2fa", "yubikey", "unlock", "permission", "access denied"],
-            "reason": "Rule Match: Identity, SSO, or authentication keywords detected."
-        },
-        {
-            "category": "software",
-            "priority": "medium",
-            "keywords": ["figma", "vscode", "outlook", "docker", "git", "python", "npm", "excel", "crash"],
-            "reason": "Rule Match: Software application error/access request keywords detected."
-        }
-    ]
+class TicketUpdate(BaseModel):
+    status: Optional[str] = None
+    assignee_name: Optional[str] = None
+    priority: Optional[str] = None
 
-    for rule in rules:
-        matched_keywords = [kw for kw in rule["keywords"] if kw in text]
-        if matched_keywords:
-            return {
-                "suggested_category": rule["category"],
-                "suggested_priority": rule["priority"],
-                "confidence_score": 0.96,
-                "engine": "fast-heuristic-rule-engine",
-                "matched_terms": matched_keywords,
-                "reasoning": f"{rule['reason']} Matched terms: {', '.join(matched_keywords)}."
-            }
-
-    # Tier 2: Semantic Intent Classifier Fallback
-    urgent_terms = ["critical", "blocking", "emergency", "production down", "urgent", "cannot work"]
-    is_urgent = any(term in text for term in urgent_terms)
-    
-    return {
-        "suggested_category": "general",
-        "suggested_priority": "high" if is_urgent else "medium",
-        "confidence_score": 0.82,
-        "engine": "semantic-intent-fallback-model",
-        "matched_terms": [],
-        "reasoning": "Semantic Intent Fallback: Analyzed context structure and priority urgency markers."
-    }
-
-# --- ENDPOINTS ---
 @app.get("/healthz", tags=["System"])
 def health_check():
     return {"status": "healthy", "timestamp": datetime.datetime.utcnow().isoformat()}
 
-@app.post("/api/triage", tags=["AI Triage"])
-def ai_triage(req: TriageRequest):
-    """Hybrid AI Triage Engine endpoint."""
-    result = classify_ticket_with_ai(req.title, req.description)
-    return result
+# --- PERSISTENT SUPABASE CRUD ENDPOINTS ---
+
+@app.get("/api/tickets", tags=["Tickets"])
+def get_tickets():
+    """Fetch persistent ticket records from Supabase PostgreSQL."""
+    try:
+        res = supabase.table("tickets").select("*").order("created_at", desc=True).execute()
+        return res.data
+    except Exception as e:
+        logger.error(f"Failed to query tickets from Supabase: {e}")
+        raise HTTPException(status_code=500, detail="Database fetch error")
+
+@app.post("/api/tickets", status_code=201, tags=["Tickets"])
+def create_ticket(ticket: TicketCreate):
+    """Insert persistent ticket record into Supabase PostgreSQL."""
+    try:
+        payload = {
+            "title": ticket.title.strip(),
+            "description": ticket.description.strip(),
+            "category": ticket.category,
+            "priority": ticket.priority,
+            "status": "open",
+            "assignee_name": "Unassigned"
+        }
+        res = supabase.table("tickets").insert(payload).execute()
+        if not res.data:
+            raise HTTPException(status_code=500, detail="Database insert returned empty result")
+        logger.info(f"Successfully created ticket {res.data[0].get('id')} in Supabase.")
+        return res.data[0]
+    except Exception as e:
+        logger.error(f"Supabase persistence failure: {e}")
+        raise HTTPException(status_code=500, detail=f"Database write failed: {str(e)}")
+
+@app.patch("/api/tickets/{ticket_id}", tags=["Tickets"])
+def update_ticket(ticket_id: str, updates: TicketUpdate):
+    """Update persistent ticket record in Supabase PostgreSQL."""
+    update_data = {k: v for k, v in updates.dict().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    try:
+        res = supabase.table("tickets").update(update_data).eq("id", ticket_id).execute()
+        return res.data[0] if res.data else {"status": "updated"}
+    except Exception as e:
+        logger.error(f"Failed to patch ticket {ticket_id}: {e}")
+        raise HTTPException(status_code=500, detail="Database update failed")
